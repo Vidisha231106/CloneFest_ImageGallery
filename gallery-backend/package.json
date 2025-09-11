@@ -1,0 +1,37 @@
+{
+  "name": "gallery-backend",
+  "version": "1.0.0",
+  "description": "The backend server for the CloneFest 2025 Image Gallery project.",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "@xenova/transformers": "^2.16.1",
+    "axios": "^1.11.0",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "exifreader": "^4.31.2",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "replicate": "^1.1.0",
+    "sharp": "^0.33.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "image-gallery",
+    "clonefest",
+    "nodejs",
+    "express",
+    "supabase"
+  ],
+  "author": "",
+  "license": "ISC"
+}
