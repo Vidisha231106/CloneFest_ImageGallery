@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
-import { Sparkles, Download, Image as ImageIcon } from 'lucide-react';
+// 1. Import the CheckCircle icon for the success message
+import { Sparkles, Download, Image as ImageIcon, CheckCircle } from 'lucide-react';
 
 function AIImageGenerator({ onImagesGenerated, theme = {} }) {
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [generatedImages, setGeneratedImages] = useState([]);
+  // 2. Add state to manage the success pop-up visibility
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+
 
   // Default theme values in case theme is undefined
   const safeTheme = {
@@ -53,16 +57,38 @@ function AIImageGenerator({ onImagesGenerated, theme = {} }) {
     }
   };
 
+  // 3. Update the saveToGallery function
   const saveToGallery = (images) => {
     if (onImagesGenerated) {
       onImagesGenerated(images);
     }
     setGeneratedImages([]);
     setPrompt('');
+    
+    // Show the success pop-up
+    setShowSuccessPopup(true);
+    
+    // Automatically hide the pop-up after 3 seconds
+    setTimeout(() => {
+      setShowSuccessPopup(false);
+    }, 3000);
   };
 
   return (
-    <div className="rounded-lg shadow-md p-6" style={{ backgroundColor: safeTheme.background }}>
+    // 4. Add `relative` positioning to the main container for the pop-up
+    <div className="rounded-lg shadow-md p-6 relative" style={{ backgroundColor: safeTheme.background }}>
+      
+      {/* 5. Add the Success Popup component */}
+      {showSuccessPopup && (
+        <div 
+            className="absolute top-5 right-5 flex items-center bg-green-100 text-green-700 px-4 py-3 rounded-lg shadow-md z-50 animate-fade-in-down"
+            role="alert"
+        >
+            <CheckCircle className="w-5 h-5 mr-3" />
+            <span className="font-medium">Images saved to gallery!</span>
+        </div>
+      )}
+
       <div className="flex items-center space-x-2 mb-6">
         <Sparkles className="w-6 h-6" style={{ color: safeTheme.primary }} />
         <h3 className="text-xl font-semibold" style={{ color: safeTheme.text }}>
