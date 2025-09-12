@@ -59,7 +59,7 @@ router.get('/:id', async (req, res) => {
         id,
         name,
         description,
-        images ( id, title, url )
+        images ( id, title, url, thumbnail_url )
       `)
             .eq('user_id', userId)
             .eq('id', id)
