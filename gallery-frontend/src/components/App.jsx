@@ -23,7 +23,6 @@ function App() {
     secondary: '#6b7280',
     accent: '#10b981'
   };
-
   const [theme, setTheme] = useState(defaultTheme);
 
   useEffect(() => {
@@ -34,7 +33,6 @@ function App() {
 
       if (token) {
         try {
-          // Check if token is expired
           const currentTime = Math.floor(Date.now() / 1000);
           const expiryTime = parseInt(tokenExpiry);
 
@@ -61,7 +59,6 @@ function App() {
                 }
               } catch (refreshError) {
                 console.error('Token refresh failed:', refreshError);
-                // Clear invalid tokens
                 localStorage.removeItem('authToken');
                 localStorage.removeItem('refreshToken');
                 localStorage.removeItem('tokenExpiry');
@@ -80,7 +77,6 @@ function App() {
             const userData = await response.json();
             setUser(userData);
           } else {
-            // Token is invalid or expired
             localStorage.removeItem('authToken');
             localStorage.removeItem('refreshToken');
             localStorage.removeItem('tokenExpiry');
@@ -118,7 +114,6 @@ function App() {
     };
     fetchImages();
   }, [user]);
-
 
   useEffect(() => {
     try {
@@ -159,8 +154,8 @@ function App() {
     setImages([]);
     setCurrentView('gallery');
   };
-  // Add these two functions inside your App component in App.jsx
 
+  // Image delete function
   const handleImageDelete = async (imageId) => {
     if (!window.confirm('Are you sure you want to delete this image?')) {
       return;
@@ -180,27 +175,51 @@ function App() {
         throw new Error(errorData.error || 'Failed to delete image.');
       }
 
-      // On success, remove the image from the local state
-      setImages(prevImages => prevImages.filter(img => img.id !== imageId));
-      // You might want to close the lightbox if it's open
-      // This requires more state management or callbacks
-
+      // Remove image from local state
+      setImages((prevImages) => prevImages.filter(img => img.id !== imageId));
     } catch (error) {
       console.error('Delete error:', error);
       alert(error.message);
     }
   };
 
+  // Image update function with support for edited image uploads
   const handleImageUpdate = async (imageId, updates) => {
     const token = localStorage.getItem('authToken');
     try {
+      let updatedData = { ...updates };
+
+      if (updates.editedUrl && updates.editedUrl.startsWith('blob:')) {
+        // Download edited blob from blob URL
+        const response = await fetch(updates.editedUrl);
+        const blob = await response.blob();
+
+        // Upload blob to Supabase storage (or your backend)
+        const { data, error } = await supabase.storage.from('edited-images').upload(`edited_${imageId}.png`, blob, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        // Get public URL to store in image info
+        const { publicURL, error: urlError } = supabase.storage.from('edited-images').getPublicUrl(data.path);
+        if (urlError) {
+          throw new Error(urlError.message);
+        }
+
+        updatedData.editedUrl = publicURL;
+      }
+
       const response = await fetch(`/api/images/${imageId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(updates)
+        body: JSON.stringify(updatedData)
       });
 
       if (!response.ok) {
@@ -210,11 +229,8 @@ function App() {
 
       const updatedImage = await response.json();
 
-      // On success, update the image in the local state
-      setImages(prevImages =>
-        prevImages.map(img => (img.id === imageId ? updatedImage : img))
-      );
-
+      // Update local state
+      setImages((prev) => prev.map(img => (img.id === imageId ? updatedImage : img)));
     } catch (error) {
       console.error('Update error:', error);
       alert(error.message);
@@ -223,167 +239,98 @@ function App() {
 
   const handleImagesGenerated = (newImages) => {
     if (Array.isArray(newImages)) {
-      setImages(prev => [...newImages, ...prev]);
+      setImages((prev) => [...newImages, ...prev]);
     }
   };
 
   const handleImagesUploaded = (newImages) => {
     if (Array.isArray(newImages)) {
-      setImages(prev => [...newImages, ...prev]);
-      setCurrentView('gallery'); // Switch to gallery after upload
+      setImages((prev) => [...newImages, ...prev]);
+      setCurrentView('gallery');
     }
   };
 
   const handleThemeChange = (newTheme) => {
     if (newTheme && typeof newTheme === 'object') {
-      setTheme(prevTheme => ({
+      setTheme((prevTheme) => ({
         ...prevTheme,
         ...newTheme
       }));
     }
   };
 
-
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: theme.background }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: theme.background }}>
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mx-auto mb-4"
-            style={{ borderColor: theme.primary, borderTopColor: 'transparent' }}></div>
+          <div
+            className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mx-auto mb-4"
+            style={{ borderColor: theme.primary, borderTopColor: 'transparent' }}
+          />
           <p style={{ color: theme.text }}>Loading...</p>
         </div>
       </div>
     );
   }
 
-  // 🔥 FIXED HERE
   if (!user) {
     return <UserAuth onLogin={handleLogin} theme={theme} />;
   }
 
   return (
-    <div className="min-h-screen transition-colors duration-300"
-      style={{ backgroundColor: theme.background, color: theme.text }}>
-
+    <div className="min-h-screen transition-colors duration-300" style={{ backgroundColor: theme.background, color: theme.text }}>
       {/* Header */}
-      <Header
-        user={user}
-        currentView={currentView}
-        onPageChange={setCurrentView}
-        onLogout={handleLogout}
-        theme={theme}
-      />
+      <Header user={user} currentView={currentView} onPageChange={setCurrentView} onLogout={handleLogout} theme={theme} />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         {currentView === 'gallery' && (
-          <Gallery
-            images={images}
-            theme={theme}
-            currentUser={user}
-            onImageUpdate={handleImageUpdate} // Add this
-            onImageDelete={handleImageDelete} // Add this
-          />
+          <Gallery images={images} theme={theme} currentUser={user} onImageUpdate={handleImageUpdate} onImageDelete={handleImageDelete} />
         )}
-
-        {currentView === 'uploader' && (
-          <Uploader
-            onImagesUploaded={handleImagesUploaded}
-            theme={theme}
-          />
-        )}
-
-        {currentView === 'albums' && (
-          <AlbumManager theme={theme} />
-        )}
-
+        {currentView === 'uploader' && <Uploader onImagesUploaded={handleImagesUploaded} theme={theme} />}
+        {currentView === 'albums' && <AlbumManager theme={theme} />}
         {currentView === 'profile' && (
           <div className="max-w-4xl mx-auto space-y-8">
-            {/* Profile Section */}
-            <div className="rounded-lg shadow-lg border transition-all duration-300 hover:shadow-xl"
-              style={{
-                backgroundColor: theme.background,
-                borderColor: theme.secondary + '30'
-              }}>
+            {/* Profile */}
+            <div className="rounded-lg shadow-lg border transition-all duration-300 hover:shadow-xl" style={{ backgroundColor: theme.background, borderColor: theme.secondary + '30' }}>
               <div className="p-6">
                 <div className="flex items-center space-x-4 mb-6">
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-lg"
-                    style={{ backgroundColor: theme.primary }}>
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-lg" style={{ backgroundColor: theme.primary }}>
                     {user.username ? user.username.charAt(0).toUpperCase() : 'U'}
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold" style={{ color: theme.text }}>
-                      {user.username || 'User'}
-                    </h2>
-                    <p style={{ color: theme.secondary }}>
-                      {user.email || 'user@example.com'}
-                    </p>
+                    <h2 className="text-2xl font-bold" style={{ color: theme.text }}>{user.username || 'User'}</h2>
+                    <p style={{ color: theme.secondary }}>{user.email || 'user@example.com'}</p>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                  <div className="p-4 rounded-lg border transition-all duration-200 hover:shadow-md"
-                    style={{
-                      backgroundColor: theme.secondary + '20',
-                      borderColor: theme.secondary + '30'
-                    }}>
-                    <div className="text-2xl font-bold" style={{ color: theme.primary }}>
-                      {images.length}
-                    </div>
-                    <div className="text-sm" style={{ color: theme.secondary }}>
-                      Total Images
-                    </div>
+                  <div className="p-4 rounded-lg border transition-all duration-200 hover:shadow-md" style={{ backgroundColor: theme.secondary + '20', borderColor: theme.secondary + '30' }}>
+                    <div className="text-2xl font-bold" style={{ color: theme.primary }}>{images.length}</div>
+                    <div className="text-sm" style={{ color: theme.secondary }}>Total Images</div>
                   </div>
-                  <div className="p-4 rounded-lg border transition-all duration-200 hover:shadow-md"
-                    style={{
-                      backgroundColor: theme.secondary + '20',
-                      borderColor: theme.secondary + '30'
-                    }}>
-                    <div className="text-2xl font-bold" style={{ color: theme.accent }}>
-                      {images.filter(img => img.tags?.includes('ai-generated')).length}
-                    </div>
-                    <div className="text-sm" style={{ color: theme.secondary }}>
-                      AI Generated
-                    </div>
+                  <div className="p-4 rounded-lg border transition-all duration-200 hover:shadow-md" style={{ backgroundColor: theme.secondary + '20', borderColor: theme.secondary + '30' }}>
+                    <div className="text-2xl font-bold" style={{ color: theme.accent }}>{images.filter(img => img.tags?.includes('ai-generated')).length}</div>
+                    <div className="text-sm" style={{ color: theme.secondary }}>AI Generated</div>
                   </div>
-                  <div className="p-4 rounded-lg border transition-all duration-200 hover:shadow-md"
-                    style={{
-                      backgroundColor: theme.secondary + '20',
-                      borderColor: theme.secondary + '30'
-                    }}>
-                    <div className="text-2xl font-bold" style={{ color: theme.primary }}>
-                      {new Set(images.flatMap(img => img.tags || [])).size}
-                    </div>
-                    <div className="text-sm" style={{ color: theme.secondary }}>
-                      Unique Tags
-                    </div>
+                  <div className="p-4 rounded-lg border transition-all duration-200 hover:shadow-md" style={{ backgroundColor: theme.secondary + '20', borderColor: theme.secondary + '30' }}>
+                    <div className="text-2xl font-bold" style={{ color: theme.primary }}>{new Set(images.flatMap(img => img.tags || [])).size}</div>
+                    <div className="text-sm" style={{ color: theme.secondary }}>Unique Tags</div>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* AI Image Generator */}
-            <AIImageGenerator
-              onImagesGenerated={handleImagesGenerated}
-              theme={theme}
-            />
+            <AIImageGenerator onImagesGenerated={handleImagesGenerated} theme={theme} />
 
             {/* Advanced Search */}
-            <VectorSearch
-              images={images}
-              theme={theme}
-            />
+            <VectorSearch images={images} theme={theme} />
           </div>
         )}
       </main>
 
       {/* Floating Theme Editor */}
-      <ColorPaletteEditor
-        theme={theme}
-        onThemeChange={handleThemeChange}
-        floating={true}
-      />
+      <ColorPaletteEditor theme={theme} onThemeChange={handleThemeChange} floating={true} />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Upload, Image, LogOut, BookImage} from 'lucide-react';
+import { User, Upload, Image, LogOut, BookImage } from 'lucide-react';
 
 function Header({ currentView, onPageChange, user, onLogout, theme }) {
   const navItems = [
@@ -10,23 +10,23 @@ function Header({ currentView, onPageChange, user, onLogout, theme }) {
   ];
 
   return (
-    <header 
+    <header
       className="shadow-lg border-b backdrop-blur-md"
-      style={{ 
+      style={{
         backgroundColor: `${theme.background}f0`,
         borderColor: `${theme.primary}20`,
-        background: `linear-gradient(135deg, ${theme.background}f0, ${theme.primary}05)`
+        background: `linear-gradient(135deg, ${theme.background}f0, ${theme.primary}05)`,
       }}
     >
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo/Title */}
           <div className="flex items-center space-x-3">
-            <div 
+            <div
               className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ 
+              style={{
                 background: `linear-gradient(45deg, ${theme.primary}, ${theme.accent})`,
-                boxShadow: `0 4px 20px ${theme.primary}30`
+                boxShadow: `0 4px 20px ${theme.primary}30`,
               }}
             >
               <Image className="w-5 h-5 text-white" />
@@ -35,10 +35,7 @@ function Header({ currentView, onPageChange, user, onLogout, theme }) {
               <h1 className="text-xl font-bold" style={{ color: theme.text }}>
                 ImageGallery
               </h1>
-              <div 
-                className="h-0.5 w-8 rounded-full mt-1"
-                style={{ backgroundColor: theme.accent }}
-              />
+              <div className="h-0.5 w-8 rounded-full mt-1" style={{ backgroundColor: theme.accent }} />
             </div>
           </div>
 
@@ -49,18 +46,17 @@ function Header({ currentView, onPageChange, user, onLogout, theme }) {
                 key={id}
                 onClick={() => onPageChange(id)}
                 className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
-                  currentView === id
-                    ? 'text-white shadow-lg transform scale-105'
-                    : 'hover:scale-105'
+                  currentView === id ? 'text-white shadow-lg transform scale-105' : 'hover:scale-105'
                 }`}
-                style={currentView === id ? {
-                  background: `linear-gradient(45deg, ${theme.primary}, ${theme.accent})`,
-                  boxShadow: `0 4px 15px ${theme.primary}40`,
-                  color: 'white'
-                } : {
-                  color: theme.text,
-                  backgroundColor: 'transparent'
-                }}
+                style={
+                  currentView === id
+                    ? {
+                        background: `linear-gradient(45deg, ${theme.primary}, ${theme.accent})`,
+                        boxShadow: `0 4px 15px ${theme.primary}40`,
+                        color: 'white',
+                      }
+                    : { color: theme.text, backgroundColor: 'transparent' }
+                }
                 onMouseEnter={(e) => {
                   if (currentView !== id) {
                     e.target.style.backgroundColor = `${theme.primary}10`;
@@ -84,27 +80,19 @@ function Header({ currentView, onPageChange, user, onLogout, theme }) {
           <div className="flex items-center space-x-4">
             {user ? (
               <div className="flex items-center space-x-3">
-                <div className="hidden sm:block text-right">
-                  <p className="text-sm font-medium" style={{ color: theme.text }}>
-                    {user.username}
-                  </p>
-
+                <div className="hidden sm:block text-right" style={{ color: theme.text }}>
+                  <p className="text-sm font-medium">{user.username}</p>
                 </div>
-                <div 
+                <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white"
-                  style={{ 
-                    background: `linear-gradient(45deg, ${theme.secondary}, ${theme.primary})` 
-                  }}
+                  style={{ background: `linear-gradient(45deg, ${theme.secondary}, ${theme.primary})` }}
                 >
                   {user.username?.charAt(0)?.toUpperCase() || 'U'}
                 </div>
                 <button
                   onClick={onLogout}
                   className="p-2.5 rounded-xl transition-all duration-300 hover:scale-110"
-                  style={{ 
-                    color: theme.text,
-                    backgroundColor: `${theme.primary}10`
-                  }}
+                  style={{ color: theme.text, backgroundColor: `${theme.primary}10` }}
                   onMouseEnter={(e) => {
                     e.target.style.backgroundColor = `${theme.primary}20`;
                   }}
@@ -122,7 +110,7 @@ function Header({ currentView, onPageChange, user, onLogout, theme }) {
                 className="text-white px-6 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105 shadow-lg"
                 style={{
                   background: `linear-gradient(45deg, ${theme.primary}, ${theme.accent})`,
-                  boxShadow: `0 4px 15px ${theme.primary}40`
+                  boxShadow: `0 4px 15px ${theme.primary}40`,
                 }}
               >
                 Sign In
@@ -136,11 +124,7 @@ function Header({ currentView, onPageChange, user, onLogout, theme }) {
               value={currentView}
               onChange={(e) => onPageChange(e.target.value)}
               className="border rounded-lg px-3 py-2 text-sm"
-              style={{
-                borderColor: `${theme.primary}30`,
-                backgroundColor: theme.background,
-                color: theme.text
-              }}
+              style={{ borderColor: `${theme.primary}30`, backgroundColor: theme.background, color: theme.text }}
             >
               {navItems.map(({ id, label }) => (
                 <option key={id} value={id} style={{ backgroundColor: theme.background, color: theme.text }}>

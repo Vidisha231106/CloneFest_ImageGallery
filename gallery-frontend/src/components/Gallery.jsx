@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Edit, Trash2, Eye } from 'lucide-react';
 import Lightbox from './Lightbox';
 
 function Gallery({ images, onImageUpdate, onImageDelete, currentUser, theme }) {
@@ -22,6 +23,18 @@ function Gallery({ images, onImageUpdate, onImageDelete, currentUser, theme }) {
     setSelectedImageIndex((prev) => 
       prev === 0 ? images.length - 1 : prev - 1
     );
+  };
+
+  const handleQuickDelete = async (e, imageId) => {
+    e.stopPropagation(); // Prevent opening lightbox
+    
+    if (window.confirm('Are you sure you want to delete this image?')) {
+      try {
+        await onImageDelete(imageId);
+      } catch (error) {
+        console.error('Failed to delete image:', error);
+      }
+    }
   };
 
   if (images.length === 0) {
@@ -57,6 +70,8 @@ function Gallery({ images, onImageUpdate, onImageDelete, currentUser, theme }) {
             image={image}
             index={index}
             onClick={() => handleImageClick(index)}
+            onQuickDelete={(e) => handleQuickDelete(e, image.id)}
+            canEdit={!!currentUser}
             theme={theme}
           />
         ))}
@@ -70,7 +85,7 @@ function Gallery({ images, onImageUpdate, onImageDelete, currentUser, theme }) {
           onPrev={handlePrevImage}
           onUpdate={onImageUpdate}
           onDelete={onImageDelete}
-          canEdit={currentUser && images[selectedImageIndex].userId === currentUser.id}
+          canEdit={!!currentUser}
           theme={theme}
         />
       )}
@@ -78,9 +93,10 @@ function Gallery({ images, onImageUpdate, onImageDelete, currentUser, theme }) {
   );
 }
 
-function ImageCard({ image, index, onClick, theme }) {
+function ImageCard({ image, index, onClick, onQuickDelete, canEdit, theme }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [showActions, setShowActions] = useState(false);
 
   const handleImageLoad = () => {
     setImageLoaded(true);
@@ -93,13 +109,51 @@ function ImageCard({ image, index, onClick, theme }) {
 
   return (
     <div
-      className="group cursor-pointer bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden"
+      className="group cursor-pointer bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden relative"
       onClick={onClick}
+      onMouseEnter={() => setShowActions(true)}
+      onMouseLeave={() => setShowActions(false)}
       style={{
         borderTop: `3px solid ${theme.primary}`,
         background: `linear-gradient(145deg, ${theme.background}, ${theme.background}f5)`
       }}
     >
+      {/* Quick Action Buttons */}
+      {canEdit && (
+        <div 
+          className={`absolute top-2 right-2 z-10 flex space-x-1 transition-all duration-300 ${
+            showActions ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-2'
+          }`}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick(); // Open lightbox in edit mode
+            }}
+            className="p-2 bg-black bg-opacity-60 text-white rounded-full hover:bg-opacity-80 transition-all duration-200 hover:scale-110"
+            title="View/Edit Image"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onQuickDelete}
+            className="p-2 bg-red-600 bg-opacity-80 text-white rounded-full hover:bg-opacity-100 transition-all duration-200 hover:scale-110"
+            title="Delete Image"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Edit Badge */}
+      {image.tags && image.tags.includes('edited') && (
+        <div 
+          className="absolute top-2 left-2 z-10 px-2 py-1 rounded-full text-xs font-medium bg-green-500 text-white"
+        >
+          Edited
+        </div>
+      )}
+
       <div className="aspect-square overflow-hidden relative">
         {!imageLoaded && !imageError && (
           <div 
@@ -143,6 +197,20 @@ function ImageCard({ image, index, onClick, theme }) {
               <h3 className="font-bold text-lg mb-1 truncate">{image.title}</h3>
               {image.caption && (
                 <p className="text-sm opacity-90 line-clamp-2">{image.caption}</p>
+              )}
+              {canEdit && (
+                <div className="flex items-center space-x-2 mt-2 pt-2 border-t border-white border-opacity-30">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onClick(); // Open in edit mode
+                    }}
+                    className="flex items-center space-x-1 text-xs bg-white bg-opacity-20 px-2 py-1 rounded hover:bg-opacity-30 transition-colors"
+                  >
+                    <Edit className="w-3 h-3" />
+                    <span>Edit</span>
+                  </button>
+                </div>
               )}
             </div>
           </>
