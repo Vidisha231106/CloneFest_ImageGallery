@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import Header from './Header';
 import Gallery from './Gallery';
-import ColorPaletteEditor from './ColorPaletteEditor';
 import AIImageGenerator from './AIImageGenerator';
 import VectorSearch from './VectorSearch';
 import Uploader from './Uploader';
@@ -279,7 +278,7 @@ function App() {
 
   return (
     <div className="min-h-screen transition-colors duration-300" style={{ backgroundColor: theme.background, color: theme.text }}>
-      {/* Header */}
+      {/* Header with integrated theme customizer */}
       <Header 
         user={user} 
         currentView={currentView} 
@@ -290,7 +289,7 @@ function App() {
       />
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 pt-16">
         {currentView === 'gallery' && (
           <Gallery images={images} theme={theme} currentUser={user} onImageUpdate={handleImageUpdate} onImageDelete={handleImageDelete} />
         )}
@@ -332,9 +331,6 @@ function App() {
 
             {/* Advanced Search */}
             <VectorSearch images={images} theme={theme} />
-
-            {/* Theme Customizer - Only show on profile page as inline component */}
-            <ColorPaletteEditor theme={theme} onThemeChange={handleThemeChange} floating={false} />
           </div>
         )}
       </main>

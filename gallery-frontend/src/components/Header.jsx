@@ -1,8 +1,10 @@
-import React from 'react';
-import { User, Upload, Image, LogOut, BookImage } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Upload, Image, LogOut, BookImage, Palette } from 'lucide-react';
 import ColorPaletteEditor from './ColorPaletteEditor';
 
 function Header({ currentView, onPageChange, user, onLogout, theme, onThemeChange }) {
+  const [showThemeCustomizer, setShowThemeCustomizer] = useState(false);
+
   const navItems = [
     { id: 'gallery', label: 'Gallery', icon: Image },
     { id: 'uploader', label: 'Upload', icon: Upload },
@@ -12,7 +14,7 @@ function Header({ currentView, onPageChange, user, onLogout, theme, onThemeChang
 
   return (
     <header
-      className="shadow-lg border-b backdrop-blur-md"
+      className="shadow-lg border-b backdrop-blur-md sticky top-0 z-50"
       style={{
         backgroundColor: `${theme.background}f0`,
         borderColor: `${theme.primary}20`,
@@ -46,47 +48,56 @@ function Header({ currentView, onPageChange, user, onLogout, theme, onThemeChang
               <button
                 key={id}
                 onClick={() => onPageChange(id)}
-                className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
-                  currentView === id ? 'text-white shadow-lg transform scale-105' : 'hover:scale-105'
-                }`}
+                className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105 ${currentView === id
+                    ? 'text-white shadow-lg transform scale-105'
+                    : 'hover:bg-opacity-10' // Use opacity for hover background
+                  }`}
                 style={
                   currentView === id
                     ? {
-                        background: `linear-gradient(45deg, ${theme.primary}, ${theme.accent})`,
-                        boxShadow: `0 4px 15px ${theme.primary}40`,
-                        color: 'white',
-                      }
-                    : { color: theme.text, backgroundColor: 'transparent' }
+                      background: `linear-gradient(45deg, ${theme.primary}, ${theme.accent})`,
+                      boxShadow: `0 4px 15px ${theme.primary}40`,
+                      color: 'white',
+                    }
+                    : {
+                      color: theme.text,
+                      // Set hover background color with opacity
+                      '--hover-bg': `${theme.primary}1A` // Use a hex value for opacity
+                    }
                 }
                 onMouseEnter={(e) => {
-                  if (currentView !== id) {
-                    e.target.style.backgroundColor = `${theme.primary}10`;
-                    e.target.style.color = theme.primary;
-                  }
+                  if (currentView !== id) e.currentTarget.style.backgroundColor = e.currentTarget.style.getPropertyValue('--hover-bg');
                 }}
                 onMouseLeave={(e) => {
-                  if (currentView !== id) {
-                    e.target.style.backgroundColor = 'transparent';
-                    e.target.style.color = theme.text;
-                  }
+                  if (currentView !== id) e.currentTarget.style.backgroundColor = 'transparent';
                 }}
               >
                 <Icon className="w-4 h-4" />
                 <span>{label}</span>
               </button>
             ))}
+
+            {/* Theme Customizer Button */}
+            <button
+              onClick={() => setShowThemeCustomizer(!showThemeCustomizer)}
+              className="flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105"
+              style={{ color: theme.text, backgroundColor: 'transparent' }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = `${theme.primary}10`;
+                e.target.style.color = theme.primary;
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = 'transparent';
+                e.target.style.color = theme.text;
+              }}
+            >
+              <Palette className="w-4 h-4" />
+              <span>Theme Customizer</span>
+            </button>
           </nav>
 
-          {/* Right side - Color Palette Editor + User Info */}
+          {/* User Info */}
           <div className="flex items-center space-x-4">
-            {/* Color Palette Editor */}
-            <ColorPaletteEditor 
-              theme={theme} 
-              onThemeChange={onThemeChange} 
-              floating={false}
-              headerMode={true}
-            />
-            
             {user ? (
               <div className="flex items-center space-x-3">
                 <div className="hidden sm:block text-right" style={{ color: theme.text }}>
@@ -100,7 +111,7 @@ function Header({ currentView, onPageChange, user, onLogout, theme, onThemeChang
                 </div>
                 <button
                   onClick={onLogout}
-                  className="p-2.5 rounded-xl transition-all duration-300 hover:scale-110"
+                  className="flex items-center space-x-2 p-2.5 rounded-xl transition-all duration-300 hover:scale-110"
                   style={{ color: theme.text, backgroundColor: `${theme.primary}10` }}
                   onMouseEnter={(e) => {
                     e.target.style.backgroundColor = `${theme.primary}20`;
@@ -111,6 +122,7 @@ function Header({ currentView, onPageChange, user, onLogout, theme, onThemeChang
                   title="Logout"
                 >
                   <LogOut className="w-4 h-4" />
+                  <span className="text-sm font-medium">Logout</span>
                 </button>
               </div>
             ) : (
@@ -144,6 +156,17 @@ function Header({ currentView, onPageChange, user, onLogout, theme, onThemeChang
           </div>
         </div>
       </div>
+
+      {/* Theme Customizer Panel - positioned absolutely to appear above other components */}
+      {showThemeCustomizer && (
+        <ColorPaletteEditor
+          theme={theme}
+          onThemeChange={onThemeChange}
+          floating={false}
+          isOpen={showThemeCustomizer}
+          onClose={() => setShowThemeCustomizer(false)}
+        />
+      )}
     </header>
   );
 }
