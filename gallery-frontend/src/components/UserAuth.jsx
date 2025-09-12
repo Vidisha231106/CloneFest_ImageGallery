@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { User, Mail, Lock, ArrowLeft, Image as ImageIcon } from 'lucide-react';
-import { supabase } from '../supabaseClient';
+import { User, Mail, Lock, ImageIcon } from 'lucide-react';
+// REMOVED: import { supabase } from '../supabaseClient';
 
-function AuthPage({ onLogin, theme }) {
+function AuthPage({ onLogin, theme }) { // CHANGED: onLogin will now handle the token
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     username: '',
@@ -23,67 +23,49 @@ function AuthPage({ onLogin, theme }) {
 
   const validateForm = () => {
     const newErrors = {};
-
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-    }
-
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
+    if (!formData.email) newErrors.email = 'Email is required';
+    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid';
+    if (!formData.password) newErrors.password = 'Password is required';
+    else if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
     if (!isLogin) {
-      if (!formData.username) {
-        newErrors.username = 'Username is required';
-      }
-      if (formData.password !== formData.confirmPassword) {
-        newErrors.confirmPassword = 'Passwords do not match';
-      }
+      if (!formData.username) newErrors.username = 'Username is required';
+      if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
     }
-
     return newErrors;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const newErrors = validateForm();
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    const formErrors = validateForm();
+    if (Object.keys(formErrors).length > 0) {
+      setErrors(formErrors);
       return;
     }
 
     setLoading(true);
+    setErrors({});
+    
     try {
-      let response;
-      if (isLogin) {
-        // Supabase login
-        response = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
-      } else {
-        // Supabase sign up
-        response = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            data: {
-              username: formData.username, // Optional: save username
-            },
-          },
-        });
+      const endpoint = isLogin ? '/api/users/login' : '/api/users/register';
+      const payload = isLogin 
+        ? { email: formData.email, password: formData.password }
+        : { email: formData.email, password: formData.password, username: formData.username };
+
+      // --- CHANGED: Switched to fetch from backend API ---
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'An error occurred.');
       }
-
-      const { data, error } = response;
-      if (error) throw error;
-
-      // The onLogin function in App.jsx will be called with the user data
-      onLogin(data.user);
+      
+      // onLogin is passed from App.jsx to handle the successful auth
+      onLogin(data); 
 
     } catch (error) {
       setErrors({ general: error.message });
@@ -92,6 +74,7 @@ function AuthPage({ onLogin, theme }) {
     }
   };
 
+  // ... rest of the component remains the same (JSX)
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12 transition-all duration-500"
       style={{ backgroundColor: theme.background }}>
@@ -270,19 +253,6 @@ function AuthPage({ onLogin, theme }) {
                 {isLogin ? 'Sign up' : 'Sign in'}
               </button>
             </p>
-          </div>
-
-          {/* Demo Users */}
-          <div className="mt-6 p-4 rounded-lg border"
-            style={{
-              backgroundColor: theme.secondary + '10',
-              borderColor: theme.secondary + '30'
-            }}>
-            <p className="text-sm font-medium mb-2" style={{ color: theme.text }}>Demo credentials:</p>
-            <div className="space-y-1 text-xs" style={{ color: theme.secondary }}>
-              <p>Email: demo@example.com</p>
-              <p>Password: demo123</p>
-            </div>
           </div>
         </div>
       </div>

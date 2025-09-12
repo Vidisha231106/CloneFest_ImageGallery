@@ -11,7 +11,13 @@ const rolePermissions = {
         'moderate_comments',
         'manage_tags',
         'manage_categories',
-        'view_analytics'
+        'view_analytics',
+        'upload_images',
+        'edit_own_images',
+        'create_albums',
+        'edit_own_albums',
+        'view_unlisted_images',
+        'create_tags'
     ],
     editor: [
         'upload_images',
@@ -22,10 +28,14 @@ const rolePermissions = {
         'moderate_own_comments',
         'create_tags'
     ],
-    visitor: [
+    user: [ // Changed from 'visitor' to 'user' to match your schema
         'view_public_images',
         'comment_on_images',
-        'like_images'
+        'like_images',
+        'upload_images',
+        'edit_own_images',
+        'create_albums',
+        'edit_own_albums'
     ]
 };
 
@@ -56,7 +66,7 @@ export const checkPermission = (requiredPermission) => {
 };
 
 // Check if user can access specific image based on privacy settings
-export const canAccessImage = async (user, image) => {
+export const canAccessImage = (user, image) => {
     // Public images are accessible to everyone
     if (image.privacy === 'public') {
         return true;
@@ -125,7 +135,7 @@ export const canDeleteImage = (user, image) => {
 };
 
 // Check if user can access specific album
-export const canAccessAlbum = async (user, album) => {
+export const canAccessAlbum = (user, album) => {
     // Public albums are accessible to everyone
     if (album.privacy === 'public') {
         return true;

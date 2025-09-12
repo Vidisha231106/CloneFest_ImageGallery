@@ -142,30 +142,42 @@ export async function uploadResponsiveImages(responsiveImages, baseFileName) {
  * @returns {Promise<object>} - The newly created image record from the database.
  */
 export async function saveImageToGallery(imageBuffer, metadata) {
+  console.log('🔄 Starting image save process...');
+  console.log('📊 Metadata:', JSON.stringify(metadata, null, 2));
+  console.log('📦 Buffer size:', imageBuffer.length, 'bytes');
+  
   const timestamp = Date.now();
   const baseFileName = `${timestamp}-${metadata.title.replace(/\s/g, '-')}`;
 
   try {
     // 1. Extract EXIF metadata
+    console.log('🔍 Extracting EXIF metadata...');
     const exifData = await extractImageMetadata(imageBuffer);
+    console.log('✅ EXIF extracted:', Object.keys(exifData).length > 0 ? 'Yes' : 'No');
 
     // 2. Get image dimensions
+    console.log('📏 Getting image dimensions...');
     const sharpImage = sharp(imageBuffer);
     const imageInfo = await sharpImage.metadata();
+    console.log('✅ Dimensions:', `${imageInfo.width}x${imageInfo.height}`);
 
     // 3. Generate responsive sizes
+    console.log('🖼️ Generating responsive sizes...');
     const responsiveImages = await generateResponsiveSizes(imageBuffer);
+    console.log('✅ Generated sizes:', Object.keys(responsiveImages));
 
     // 4. Upload all sizes
+    console.log('☁️ Uploading to storage...');
     const responsiveUrls = await uploadResponsiveImages(responsiveImages, baseFileName);
+    console.log('✅ Upload complete. URLs:', Object.keys(responsiveUrls));
 
     // 5. Prepare database record
+    console.log('🗄️ Preparing database record...');
     const dbRecord = {
       title: metadata.title,
       caption: metadata.caption || '',
       alt_text: metadata.altText || metadata.title,
       user_id: metadata.userId,
-      tags: metadata.tags || [],
       privacy: metadata.privacy || 'public',
       license: metadata.license || null,
       attribution: metadata.attribution || null,
@@ -194,6 +206,9 @@ export async function saveImageToGallery(imageBuffer, metadata) {
       generation_meta: metadata.generationMeta || null,
     };
 
+    console.log('💾 Inserting into database...');
+    console.log('🔑 Record keys:', Object.keys(dbRecord));
+
     // 6. Insert into database
     const { data: dbData, error: dbError } = await supabase
       .from('images')
@@ -201,16 +216,25 @@ export async function saveImageToGallery(imageBuffer, metadata) {
       .select()
       .single();
 
-    if (dbError) throw dbError;
+    if (dbError) {
+      console.error('❌ Database error:', dbError);
+      throw dbError;
+    }
 
+    console.log('✅ Successfully saved to database with ID:', dbData.id);
     return dbData;
 
   } catch (error) {
-    console.error('Failed to save image to gallery:', error);
+    console.error('❌ Failed to save image to gallery:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint
+    });
     throw new Error(`Image processing failed: ${error.message}`);
   }
 }
-
 /**
  * Update image metadata and privacy settings
  * @param {string} imageId - Image ID

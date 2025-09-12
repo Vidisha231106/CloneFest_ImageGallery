@@ -12,72 +12,8 @@ import AlbumManager from './AlbumManager';
 function App() {
   const [currentView, setCurrentView] = useState('gallery');
   const [user, setUser] = useState(null);
-  const [images, setImages] = useState([
-    {
-      id: 1,
-      url: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=500&h=300&fit=crop",
-      title: "Mountain Lake Serenity",
-      caption: "A peaceful mountain lake reflecting the sky at dawn",
-      altText: "Serene mountain lake with perfect reflections",
-      tags: ["nature", "landscape", "mountains", "water", "peaceful"]
-    },
-    {
-      id: 2,
-      url: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=500&h=300&fit=crop",
-      title: "Forest Path Adventure",
-      caption: "Sunlight filtering through ancient trees on a woodland trail",
-      altText: "Sunlit forest path through tall trees",
-      tags: ["forest", "nature", "trees", "adventure", "sunlight"]
-    },
-    {
-      id: 3,
-      url: "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=500&h=300&fit=crop",
-      title: "Ocean Sunset Magic",
-      caption: "Golden hour waves meeting a vibrant sunset horizon",
-      altText: "Ocean waves during golden sunset",
-      tags: ["ocean", "sunset", "waves", "golden-hour", "seascape"]
-    },
-    {
-      id: 4,
-      url: "https://images.unsplash.com/photo-1519904981063-b0cf448d479e?w=500&h=300&fit=crop",
-      title: "Desert Dunes Dream",
-      caption: "Rolling sand dunes under a star-filled desert sky",
-      altText: "Sand dunes in desert landscape",
-      tags: ["desert", "dunes", "sand", "landscape", "vast"]
-    },
-    {
-      id: 5,
-      url: "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=500&h=300&fit=crop",
-      title: "City Lights Sparkle",
-      caption: "Urban skyline illuminated against the twilight sky",
-      altText: "City skyline with lights at night",
-      tags: ["city", "urban", "lights", "skyline", "night"]
-    },
-    {
-      id: 6,
-      url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&h=300&fit=crop",
-      title: "Autumn Leaves Dance",
-      caption: "Colorful fall foliage covering a quiet countryside road",
-      altText: "Autumn trees with colorful leaves",
-      tags: ["autumn", "fall", "leaves", "colors", "seasonal"]
-    },
-    {
-      id: 7,
-      url: "https://images.unsplash.com/photo-1464822759844-d150b343c637?w=500&h=300&fit=crop",
-      title: "Snowy Peak Majesty",
-      caption: "Snow-capped mountain peaks piercing through morning clouds",
-      altText: "Snow-covered mountain peaks above clouds",
-      tags: ["mountains", "snow", "peaks", "clouds", "majestic"]
-    },
-    {
-      id: 8,
-      url: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=500&h=300&fit=crop",
-      title: "Flower Field Bliss",
-      caption: "Endless fields of wildflowers swaying in the gentle breeze",
-      altText: "Colorful wildflower field in bloom",
-      tags: ["flowers", "field", "wildflowers", "nature", "colorful"]
-    }
-  ]);
+  const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Default theme with improved colors
   const defaultTheme = {
@@ -89,24 +25,53 @@ function App() {
   };
 
   const [theme, setTheme] = useState(defaultTheme);
-  const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
+  useEffect(() => {
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        try {
+          const response = await fetch('/api/users/me', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (response.ok) {
+            const userData = await response.json();
+            setUser(userData);
+          } else {
+            // Token is invalid or expired
+            localStorage.removeItem('authToken');
+            setUser(null);
+          }
+        } catch (error) {
+          console.error('Failed to fetch user profile:', error);
+          setUser(null);
+        }
+      }
       setLoading(false);
     };
-
     checkUser();
-
-    // Listen for auth changes (login, logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const fetchImages = async () => {
+      if (user) {
+        const token = localStorage.getItem('authToken');
+        try {
+          const response = await fetch('/api/images', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setImages(data.images || []);
+          }
+        } catch (error) {
+          console.error("Failed to fetch images:", error);
+        }
+      }
+    };
+    fetchImages();
+  }, [user]);
+
 
   useEffect(() => {
     try {
@@ -125,18 +90,21 @@ function App() {
     }
   }, [theme]);
 
-  const handleLogin = (userData) => {
-    setLoading(true);
-    setTimeout(() => {
-      setUser(userData);
+  const handleLogin = (data) => {
+    if (data.token && data.user) {
+      localStorage.setItem('authToken', data.token);
+      setUser(data.user);
       setCurrentView('gallery');
-      setLoading(false);
-    }, 500);
+    } else if (data.user) { // For registration
+        alert(data.message || 'Registration successful! Please log in.');
+        // Don't log the user in automatically after registration
+    }
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    localStorage.removeItem('authToken');
     setUser(null);
+    setImages([]); // Clear images on logout
     setCurrentView('gallery');
   };
 
@@ -149,6 +117,7 @@ function App() {
   const handleImagesUploaded = (newImages) => {
     if (Array.isArray(newImages)) {
       setImages(prev => [...newImages, ...prev]);
+      setCurrentView('gallery'); // Switch to gallery after upload
     }
   };
 
