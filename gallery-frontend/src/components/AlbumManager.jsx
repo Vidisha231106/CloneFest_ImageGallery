@@ -1,7 +1,7 @@
 // src/components/AlbumManager.jsx
 import React, { useState, useEffect } from 'react';
 import { fetchAlbums, createAlbum, fetchAlbumDetails, addImageToAlbum, removeImageFromAlbum, fetchImages } from '../api';
-import { BookImage, Plus, X, ImagePlus, Trash2, Check, Square } from 'lucide-react';
+import { BookImage, Plus, X, ImagePlus, Trash2, Check, Square, Image as ImageIcon } from 'lucide-react';
 
 function AlbumManager({ theme }) {
   const [albums, setAlbums] = useState([]);
@@ -106,6 +106,15 @@ function AlbumManager({ theme }) {
       const response = await fetchAlbumDetails(selectedAlbum.id);
       setSelectedAlbum(response.data);
       setAvailableImages(prev => prev.filter(img => img.id !== imageId));
+      
+      // Update the album in the albums list to reflect the new image
+      setAlbums(prevAlbums => 
+        prevAlbums.map(album => 
+          album.id === selectedAlbum.id 
+            ? { ...album, images: response.data.images }
+            : album
+        )
+      );
     } catch (error) {
       console.error("Failed to add image to album:", error);
     } finally {
@@ -125,6 +134,15 @@ function AlbumManager({ theme }) {
       await removeImageFromAlbum(selectedAlbum.id, imageId);
       const response = await fetchAlbumDetails(selectedAlbum.id);
       setSelectedAlbum(response.data);
+      
+      // Update the album in the albums list to reflect the removed image
+      setAlbums(prevAlbums => 
+        prevAlbums.map(album => 
+          album.id === selectedAlbum.id 
+            ? { ...album, images: response.data.images }
+            : album
+        )
+      );
     } catch (error) {
       console.error("Failed to remove image from album:", error);
       setError('Failed to remove image. Please try again.');
@@ -194,6 +212,13 @@ function AlbumManager({ theme }) {
     setDraggedImage(null);
   };
 
+  // Get the latest (most recently added) image from an album
+  const getAlbumPreviewImage = (album) => {
+    if (!album.images || album.images.length === 0) return null;
+    // Return the last image in the array (most recently added)
+    return album.images[album.images.length - 1];
+  };
+
   if (loading) return <p>Loading albums...</p>;
 
   // Album detail view
@@ -246,10 +271,10 @@ function AlbumManager({ theme }) {
               <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                   onClick={() => handleRemoveImageFromAlbum(image.id)}
-                  className="p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                  className="p-1 bg-black text-white rounded-full hover:bg-black"
                   title="Remove from album"
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={30} />
                 </button>
               </div>
               <p className="text-sm mt-1 truncate">{image.title}</p>
@@ -257,12 +282,13 @@ function AlbumManager({ theme }) {
           ))}
           
           {(!selectedAlbum.images || selectedAlbum.images.length === 0) && (
-            <div className="col-span-full text-center py-12">
-              <ImagePlus size={48} className="mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-500 mb-4">This album is empty. Add some images from your gallery!</p>
+            <div className="col-span-full text-center py-16">
+              <ImagePlus size={64} className="mx-auto text-gray-300 mb-6" />
+              <h3 className="text-xl font-semibold text-gray-700 mb-3">This album is empty</h3>
+              <p className="text-gray-500 mb-6 text-lg">Add some images from your gallery to get started!</p>
               <button
                 onClick={handleOpenAddImages}
-                className="px-4 py-2 rounded-lg text-white"
+                className="px-6 py-3 rounded-lg text-white font-medium text-lg"
                 style={{ backgroundColor: theme.primary }}
               >
                 Add Images
@@ -466,21 +492,83 @@ function AlbumManager({ theme }) {
         </form>
       </div>
 
-      {/* Album List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {albums.filter(album => album && album.id).map(album => (
-          <div
-            key={album.id}
-            onClick={() => handleSelectAlbum(album.id)}
-            className="p-6 border rounded-lg cursor-pointer hover:shadow-lg transition-shadow"
-            style={{ borderColor: theme.secondary + '30' }}
-          >
-            <BookImage className="mb-3" size={24} style={{ color: theme.primary }} />
-            <h3 className="font-semibold text-lg mb-2">{album.name || 'Untitled Album'}</h3>
-            <p className="text-sm text-gray-600">{album.description || 'No description'}</p>
-          </div>
-        ))}
+      {/* Album List with Preview Images */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {albums.filter(album => album && album.id).map(album => {
+          const previewImage = getAlbumPreviewImage(album);
+          const imageCount = album.images ? album.images.length : 0;
+          
+          return (
+            <div
+              key={album.id}
+              onClick={() => handleSelectAlbum(album.id)}
+              className="border rounded-lg cursor-pointer hover:shadow-lg transition-shadow overflow-hidden"
+              style={{ borderColor: theme.secondary + '30' }}
+            >
+              {/* Preview Image Section */}
+              <div className="relative h-48 bg-gray-100">
+                {previewImage ? (
+                  <div className="relative h-full">
+                    <img
+                      src={previewImage.thumbnail_url || previewImage.url}
+                      alt={previewImage.title}
+                      className="w-full h-full object-cover"
+                    />
+                    {/* Image count overlay */}
+                    {imageCount > 1 && (
+                      <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                        <ImageIcon size={12} />
+                        {imageCount}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <BookImage size={32} className="mx-auto mb-2 text-gray-400" />
+                      <p className="text-gray-500 text-sm">No images</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Album Info Section */}
+              <div className="p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <h3 className="font-semibold text-lg" style={{ color: theme.primary }}>
+                    {album.name || 'Untitled Album'}
+                  </h3>
+                  <BookImage size={20} style={{ color: theme.primary }} className="flex-shrink-0 mt-1" />
+                </div>
+                
+                <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                  {album.description || 'No description'}
+                </p>
+                
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>
+                    {imageCount} {imageCount === 1 ? 'image' : 'images'}
+                  </span>
+                  {previewImage && (
+                    <span className="flex items-center gap-1">
+                      Latest: {previewImage.title.length > 15 
+                        ? previewImage.title.substring(0, 15) + '...' 
+                        : previewImage.title}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
+
+      {albums.length === 0 && !loading && (
+        <div className="text-center py-12">
+          <BookImage size={48} className="mx-auto text-gray-400 mb-4" />
+          <p className="text-gray-500 mb-4">No albums created yet. Create your first album to get started!</p>
+        </div>
+      )}
     </div>
   );
 }
