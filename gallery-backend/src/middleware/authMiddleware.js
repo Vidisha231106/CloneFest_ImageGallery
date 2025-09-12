@@ -32,7 +32,8 @@ const authMiddleware = async (req, res, next) => {
     // Attach the user object to the request for other routes to use
     req.user = {
       ...user,
-      ...userProfile
+      ...userProfile,
+      email: user.email 
     };
     
     next(); // Proceed to the next middleware or route handler

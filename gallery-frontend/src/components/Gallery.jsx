@@ -58,6 +58,7 @@ function Gallery({ images, onImageUpdate, onImageDelete, currentUser, theme }) {
             index={index}
             onClick={() => handleImageClick(index)}
             theme={theme}
+            loading = "lazy"
           />
         ))}
       </div>

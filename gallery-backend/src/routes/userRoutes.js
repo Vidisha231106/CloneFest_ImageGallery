@@ -81,7 +81,7 @@ router.post('/login', async (req, res) => {
 
         if (profileError) {
             console.error('Profile lookup failed:', profileError);
-            
+
             // If profile doesn't exist, create it (migration case) - REMOVED EMAIL
             if (profileError.code === 'PGRST116') {
                 const { data: newProfile, error: createError } = await supabase
@@ -95,14 +95,14 @@ router.post('/login', async (req, res) => {
                     .single();
 
                 if (createError) throw createError;
-                
+
                 return res.status(200).json({
                     user: newProfile,
                     session: authData.session,
                     token: authData.session.access_token
                 });
             }
-            
+
             throw profileError;
         }
 
@@ -178,6 +178,43 @@ router.get('/', authMiddleware, checkPermission('manage_users'), async (req, res
     } catch (error) {
         console.error('Failed to fetch users:', error);
         res.status(500).json({ error: 'Failed to fetch users.' });
+    }
+});
+
+// Add this new route to your userRoutes.js file
+
+router.post('/refresh', async (req, res) => {
+    const { refresh_token } = req.body;
+
+    if (!refresh_token) {
+        return res.status(400).json({ error: 'Refresh token is required.' });
+    }
+
+    try {
+        const { data, error } = await supabase.auth.refreshSession({ refresh_token });
+
+        if (error) throw error;
+
+        const { user, session } = data;
+
+        // Also get the user's profile from your public table
+        const { data: userProfile, error: profileError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+
+        if (profileError) throw profileError;
+
+        res.status(200).json({
+            user: { ...userProfile, email: user.email },
+            session,
+            token: session.access_token
+        });
+
+    } catch (error) {
+        console.error('Token refresh failed:', error);
+        res.status(401).json({ error: error.message || 'Could not refresh token.' });
     }
 });
 
