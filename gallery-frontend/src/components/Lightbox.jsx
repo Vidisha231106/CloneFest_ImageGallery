@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Edit3, Trash2 } from 'lucide-react';
 import MetadataEditor from './MetadataEditor';
+import { fetchAlbums, addImageToAlbum } from '../api';
 
 function Lightbox({ image, onClose, onNext, onPrev, onUpdate, onDelete, canEdit }) {
   const [showMetadataEditor, setShowMetadataEditor] = useState(false);
@@ -91,7 +92,17 @@ function Lightbox({ image, onClose, onNext, onPrev, onUpdate, onDelete, canEdit 
           <div className="flex items-start justify-between mb-2">
             <h2 className="text-xl font-semibold">{image.title}</h2>
             {canEdit && (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 relative">
+                {/* Add to Album Button */}
+                <button
+                  onClick={() => setShowAlbumList(!showAlbumList)}
+                  className="p-1 hover:bg-white hover:bg-opacity-20 rounded transition-colors"
+                  title="Add to album"
+                >
+                  <BookImage className="w-4 h-4" />
+                </button>
+
+                {/* Edit Button */}
                 <button
                   onClick={() => setShowMetadataEditor(true)}
                   className="p-1 hover:bg-white hover:bg-opacity-20 rounded transition-colors"
@@ -99,6 +110,8 @@ function Lightbox({ image, onClose, onNext, onPrev, onUpdate, onDelete, canEdit 
                 >
                   <Edit3 className="w-4 h-4" />
                 </button>
+
+                {/* Delete Button */}
                 <button
                   onClick={handleDelete}
                   className="p-1 hover:bg-red-600 hover:bg-opacity-50 rounded transition-colors"
@@ -106,10 +119,28 @@ function Lightbox({ image, onClose, onNext, onPrev, onUpdate, onDelete, canEdit 
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
+
+                {/* Album Dropdown List */}
+                {showAlbumList && (
+                  <div className="absolute bottom-full right-0 mb-2 w-48 bg-white text-black rounded-lg shadow-lg overflow-hidden">
+                    <p className="text-xs font-bold p-2 border-b">Add to album...</p>
+                    <ul className="max-h-40 overflow-y-auto">
+                      {albums.map(album => (
+                        <li
+                          key={album.id}
+                          onClick={() => handleAddToAlbum(album.id)}
+                          className="p-2 text-sm hover:bg-gray-100 cursor-pointer"
+                        >
+                          {album.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
           </div>
-          
+
           {image.caption && (
             <p className="text-gray-300 mb-3">{image.caption}</p>
           )}

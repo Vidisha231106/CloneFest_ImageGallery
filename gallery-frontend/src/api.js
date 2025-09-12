@@ -48,8 +48,19 @@ export const createAlbum = async (name, description = '') => {
   }
 };
 export const fetchAlbumDetails = (albumId) => apiClient.get(`/api/albums/${albumId}`);
-export const addImageToAlbum = (albumId, imageId) => {
-  return apiClient.post(`/api/albums/${albumId}/images`, { imageId });
+export const addImageToAlbum = async (albumId, imageId) => {
+  try {
+    const response = await apiClient.post(`/api/albums/${albumId}/images`, { imageId });
+    return response.data;
+  } catch (error) {
+    // The backend sends a 409 if the image is already in the album
+    if (error.response?.status === 409) {
+      alert('This image is already in the selected album.');
+    } else {
+      console.error(`API Error adding image ${imageId} to album ${albumId}:`, error);
+    }
+    throw error;
+  }
 };
 export const removeImageFromAlbum = (albumId, imageId) => {
   return apiClient.delete(`/api/albums/${albumId}/images/${imageId}`);
@@ -66,3 +77,6 @@ export const searchTextVector = (query) => {
 // --- Palette API ---
 export const fetchPalettes = () => apiClient.get('/api/palettes');
 export const savePalette = (name, colors) => apiClient.post('/api/palettes', { name, colors });
+
+// Add this function to your api.js file, inside the "Album API" section
+
