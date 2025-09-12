@@ -1,7 +1,8 @@
 import React from 'react';
 import { User, Upload, Image, LogOut, BookImage } from 'lucide-react';
+import ColorPaletteEditor from './ColorPaletteEditor';
 
-function Header({ currentView, onPageChange, user, onLogout, theme }) {
+function Header({ currentView, onPageChange, user, onLogout, theme, onThemeChange }) {
   const navItems = [
     { id: 'gallery', label: 'Gallery', icon: Image },
     { id: 'uploader', label: 'Upload', icon: Upload },
@@ -76,8 +77,16 @@ function Header({ currentView, onPageChange, user, onLogout, theme }) {
             ))}
           </nav>
 
-          {/* User Info */}
+          {/* Right side - Color Palette Editor + User Info */}
           <div className="flex items-center space-x-4">
+            {/* Color Palette Editor */}
+            <ColorPaletteEditor 
+              theme={theme} 
+              onThemeChange={onThemeChange} 
+              floating={false}
+              headerMode={true}
+            />
+            
             {user ? (
               <div className="flex items-center space-x-3">
                 <div className="hidden sm:block text-right" style={{ color: theme.text }}>

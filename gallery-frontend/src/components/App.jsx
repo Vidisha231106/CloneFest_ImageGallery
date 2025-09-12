@@ -280,7 +280,14 @@ function App() {
   return (
     <div className="min-h-screen transition-colors duration-300" style={{ backgroundColor: theme.background, color: theme.text }}>
       {/* Header */}
-      <Header user={user} currentView={currentView} onPageChange={setCurrentView} onLogout={handleLogout} theme={theme} />
+      <Header 
+        user={user} 
+        currentView={currentView} 
+        onPageChange={setCurrentView} 
+        onLogout={handleLogout} 
+        theme={theme} 
+        onThemeChange={handleThemeChange}
+      />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
@@ -325,12 +332,12 @@ function App() {
 
             {/* Advanced Search */}
             <VectorSearch images={images} theme={theme} />
+
+            {/* Theme Customizer - Only show on profile page as inline component */}
+            <ColorPaletteEditor theme={theme} onThemeChange={handleThemeChange} floating={false} />
           </div>
         )}
       </main>
-
-      {/* Floating Theme Editor */}
-      <ColorPaletteEditor theme={theme} onThemeChange={handleThemeChange} floating={true} />
     </div>
   );
 }
