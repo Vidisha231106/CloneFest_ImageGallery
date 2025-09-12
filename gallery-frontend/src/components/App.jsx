@@ -29,21 +29,68 @@ function App() {
   useEffect(() => {
     const checkUser = async () => {
       const token = localStorage.getItem('authToken');
+      const refreshToken = localStorage.getItem('refreshToken');
+      const tokenExpiry = localStorage.getItem('tokenExpiry');
+
       if (token) {
         try {
+          // Check if token is expired
+          const currentTime = Math.floor(Date.now() / 1000);
+          const expiryTime = parseInt(tokenExpiry);
+
+          let currentToken = token;
+
+          // If token is expired or about to expire, try to refresh
+          if (expiryTime && currentTime >= expiryTime - 300) { // 5 minutes before expiry
+            if (refreshToken) {
+              try {
+                const refreshResponse = await fetch('/api/users/refresh', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ refresh_token: refreshToken })
+                });
+
+                if (refreshResponse.ok) {
+                  const refreshData = await refreshResponse.json();
+                  currentToken = refreshData.token;
+                  localStorage.setItem('authToken', refreshData.token);
+                  localStorage.setItem('refreshToken', refreshData.session.refresh_token);
+                  localStorage.setItem('tokenExpiry', refreshData.session.expires_at);
+                } else {
+                  throw new Error('Token refresh failed');
+                }
+              } catch (refreshError) {
+                console.error('Token refresh failed:', refreshError);
+                // Clear invalid tokens
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('refreshToken');
+                localStorage.removeItem('tokenExpiry');
+                setUser(null);
+                setLoading(false);
+                return;
+              }
+            }
+          }
+
           const response = await fetch('/api/users/me', {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 'Authorization': `Bearer ${currentToken}` }
           });
+
           if (response.ok) {
             const userData = await response.json();
             setUser(userData);
           } else {
             // Token is invalid or expired
             localStorage.removeItem('authToken');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('tokenExpiry');
             setUser(null);
           }
         } catch (error) {
           console.error('Failed to fetch user profile:', error);
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('tokenExpiry');
           setUser(null);
         }
       }
@@ -91,21 +138,87 @@ function App() {
   }, [theme]);
 
   const handleLogin = (data) => {
-    if (data.token && data.user) {
+    if (data.token && data.user && data.session) {
+      // Store both token and session data
       localStorage.setItem('authToken', data.token);
+      localStorage.setItem('refreshToken', data.session.refresh_token);
+      localStorage.setItem('tokenExpiry', data.session.expires_at);
       setUser(data.user);
       setCurrentView('gallery');
-    } else if (data.user) { // For registration
-        alert(data.message || 'Registration successful! Please log in.');
-        // Don't log the user in automatically after registration
+    } else if (data.user) {
+      alert(data.message || 'Registration successful! Please log in.');
     }
   };
 
   const handleLogout = async () => {
+    // Clear all auth data
     localStorage.removeItem('authToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('tokenExpiry');
     setUser(null);
-    setImages([]); // Clear images on logout
+    setImages([]);
     setCurrentView('gallery');
+  };
+  // Add these two functions inside your App component in App.jsx
+
+  const handleImageDelete = async (imageId) => {
+    if (!window.confirm('Are you sure you want to delete this image?')) {
+      return;
+    }
+
+    const token = localStorage.getItem('authToken');
+    try {
+      const response = await fetch(`/api/images/${imageId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete image.');
+      }
+
+      // On success, remove the image from the local state
+      setImages(prevImages => prevImages.filter(img => img.id !== imageId));
+      // You might want to close the lightbox if it's open
+      // This requires more state management or callbacks
+
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert(error.message);
+    }
+  };
+
+  const handleImageUpdate = async (imageId, updates) => {
+    const token = localStorage.getItem('authToken');
+    try {
+      const response = await fetch(`/api/images/${imageId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updates)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update image.');
+      }
+
+      const updatedImage = await response.json();
+
+      // On success, update the image in the local state
+      setImages(prevImages =>
+        prevImages.map(img => (img.id === imageId ? updatedImage : img))
+      );
+
+    } catch (error) {
+      console.error('Update error:', error);
+      alert(error.message);
+    }
   };
 
   const handleImagesGenerated = (newImages) => {
@@ -129,6 +242,7 @@ function App() {
       }));
     }
   };
+
 
   if (loading) {
     return (
@@ -164,7 +278,13 @@ function App() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         {currentView === 'gallery' && (
-          <Gallery images={images} theme={theme} />
+          <Gallery
+            images={images}
+            theme={theme}
+            currentUser={user}
+            onImageUpdate={handleImageUpdate} // Add this
+            onImageDelete={handleImageDelete} // Add this
+          />
         )}
 
         {currentView === 'uploader' && (

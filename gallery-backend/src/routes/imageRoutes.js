@@ -42,13 +42,13 @@ router.get('/', optionalAuth, async (req, res) => {
 
         let query = supabase
             .from('images')
-            .select(`
-                *,
-                users!images_user_id_fkey(id, username, avatar_url),
-                image_tags!left(
-                    tags!inner(id, name, display_name, color)
-                )
-            `, { count: 'exact' });
+.select(`
+    *,
+    users!images_user_id_fkey(id, username, avatar_url),
+    image_tags!left(
+        tags!left(id, name, display_name, color)
+    )
+`, { count: 'exact' });
 
         // Apply privacy filtering
         if (req.user) {
