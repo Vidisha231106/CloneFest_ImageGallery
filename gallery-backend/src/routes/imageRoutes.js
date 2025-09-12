@@ -51,31 +51,15 @@ router.get('/', optionalAuth, async (req, res) => {
 `, { count: 'exact' });
 
         // Apply privacy filtering
-        if (req.user) {
-            if (req.user.role === 'admin') {
-                // Admins can see everything
-                if (privacy) {
-                    query = query.eq('privacy', privacy);
-                }
-            } else {
-                // Regular users - filter by what they can access
-                const accessiblePrivacies = ['public'];
-                if (['admin', 'editor'].includes(req.user.role)) {
-                    accessiblePrivacies.push('unlisted');
-                }
-                
-                if (privacy && accessiblePrivacies.includes(privacy)) {
-                    query = query.eq('privacy', privacy);
-                } else {
-                    query = query.or(
-                        `privacy.in.(${accessiblePrivacies.join(',')}),user_id.eq.${req.user.id}`
-                    );
-                }
-            }
-        } else {
-            // Non-authenticated users can only see public images
-            query = query.eq('privacy', 'public');
-        }
+        // Apply privacy filtering
+if (req.user) {
+    // If a user is logged in, strictly filter by their user ID.
+    // This ensures they see ONLY their own images by default.
+    query = query.eq('user_id', req.user.id);
+} else {
+    // If no user is logged in, show only public images.
+    query = query.eq('privacy', 'public');
+}
 
         // Filter by user
         if (user_id) {

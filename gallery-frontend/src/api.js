@@ -5,20 +5,19 @@ import { supabase } from './supabaseClient'; // Adjust path if needed
 // 1. AXIOS INSTANCE SETUP
 // This is the core piece that adds the auth token to every request.
 // ====================================================================
-const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
-});
+const apiClient = axios.create();
 
 // Use an interceptor to add the Supabase auth token to every request
-apiClient.interceptors.request.use(async (config) => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.access_token) {
-    config.headers.Authorization = `Bearer ${session.access_token}`;
-  }
-  return config;
-}, (error) => {
-  return Promise.reject(error);
-});
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 export default apiClient; // Exporting this can also be useful
 
@@ -39,8 +38,14 @@ export const uploadImages = (formData) => {
 
 // --- Album API ---
 export const fetchAlbums = () => apiClient.get('/api/albums');
-export const createAlbum = (name, description) => {
-  return apiClient.post('/api/albums', { name, description });
+export const createAlbum = async (name, description = '') => {
+  try {
+    const response = await apiClient.post('/api/albums', { name, description });
+    return response.data; // Return the actual data object
+  } catch (error) {
+    console.error("API Error creating album:", error);
+    throw error; // Re-throw the error so the component can catch it
+  }
 };
 export const fetchAlbumDetails = (albumId) => apiClient.get(`/api/albums/${albumId}`);
 export const addImageToAlbum = (albumId, imageId) => {
