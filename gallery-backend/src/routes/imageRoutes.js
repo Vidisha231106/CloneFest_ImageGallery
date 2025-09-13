@@ -165,28 +165,38 @@ router.post('/', authMiddleware, checkPermission('upload_images'), upload.array(
 
     try {
         const uploadPromises = files.map(async (file) => {
-            const parsedTags = tags ? JSON.parse(tags) : [];
+    // Parse tags - handle both JSON string and comma-separated string
+    let parsedTags = [];
+    if (tags) {
+        try {
+            // Try to parse as JSON first
+            parsedTags = JSON.parse(tags);
+        } catch (jsonError) {
+            // If JSON parsing fails, treat as comma-separated string
+            parsedTags = tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+        }
+    }
 
-            const metadata = {
-                title: title || file.originalname.replace(/\.[^/.]+$/, ''),
-                caption: caption || '',
-                altText: altText || '',
-                userId: userId,
-                privacy: privacy || 'private', // Use the value from the form
-                license: license,
-                attribution: attribution,
-                tags: parsedTags // Use the parsed tags
-            };
+    const metadata = {
+        title: title || file.originalname.replace(/\.[^/.]+$/, ''),
+        caption: caption || '',
+        altText: altText || '',
+        userId: userId,
+        privacy: privacy || 'private',
+        license: license,
+        attribution: attribution,
+        tags: parsedTags
+    };
 
-            const uploadedImage = await saveImageToGallery(file.buffer, metadata);
+    const uploadedImage = await saveImageToGallery(file.buffer, metadata);
 
-            // If tags were provided, create tag associations
-            if (metadata.tags.length > 0) {
-                await createImageTags(uploadedImage.id, metadata.tags, userId);
-            }
+    // If tags were provided, create tag associations
+    if (metadata.tags.length > 0) {
+        await createImageTags(uploadedImage.id, metadata.tags, userId);
+    }
 
-            return uploadedImage;
-        });
+    return uploadedImage;
+});
 
         const uploadedImages = await Promise.all(uploadPromises);
         res.status(201).json(uploadedImages);

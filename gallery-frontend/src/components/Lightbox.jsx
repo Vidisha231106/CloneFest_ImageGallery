@@ -58,7 +58,7 @@ function Lightbox({ image, onClose, onNext, onPrev, onUpdate, onDelete, canEdit,
         console.error('Failed to load albums:', error);
       }
     };
-    
+
     if (showAlbumList) {
       loadAlbums();
     }
@@ -82,21 +82,41 @@ function Lightbox({ image, onClose, onNext, onPrev, onUpdate, onDelete, canEdit,
     setShowMetadataEditor(false);
   };
 
+
   const handleImageSave = async (editedBlob, editData) => {
     try {
       const token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      // Step 1: Upload the edited image file to replace the existing one
       const formData = new FormData();
-      
-      // Create a new filename with editing info
-      const timestamp = Date.now();
-      const filename = `edited_${timestamp}_${image.title || 'image'}.png`;
-      
+      const filename = `${image.title || 'image'}_${Date.now()}.png`;
       formData.append('images', editedBlob, filename);
-      formData.append('title', `${image.title || 'Image'} (Edited)`);
-      formData.append('caption', `Edited version - Brightness: ${editData.brightness}, Filter: ${editData.filter}`);
-      formData.append('tags', JSON.stringify([...(image.tags || []), 'edited', `filter-${editData.filter}`]));
-      
-      const response = await fetch('/api/images/upload', {
+      formData.append('title', image.title || 'Untitled');
+      formData.append('caption', image.caption || '');
+      formData.append('altText', image.alt_text || image.altText || '');
+      formData.append('privacy', image.privacy || 'private');
+
+      // Add editing information to caption
+      const editInfo = `Brightness: ${editData.brightness}, Filter: ${editData.filter}`;
+
+
+      // Handle existing tags - preserve original tags without adding editing info
+      const existingTags = Array.isArray(image.tags)
+        ? image.tags.map(tag => tag.display_name || tag.name || tag)
+        : [];
+      formData.append('tags', JSON.stringify(existingTags));
+
+      // Add other metadata
+      if (image.license) formData.append('license', image.license);
+      if (image.attribution) formData.append('attribution', image.attribution);
+
+      console.log('Uploading edited image to replace existing...');
+
+      // Upload new version
+      const uploadResponse = await fetch('/api/images', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -104,21 +124,45 @@ function Lightbox({ image, onClose, onNext, onPrev, onUpdate, onDelete, canEdit,
         body: formData
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        // Add the new edited image to the gallery
-        if (result.images && result.images.length > 0) {
-          // This would need to be passed from the parent component
-          // For now, we'll just close the editor
-          setShowImageEditor(false);
-          alert('Edited image saved successfully!');
-        }
-      } else {
-        throw new Error('Failed to save edited image');
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        throw new Error(`Upload failed: ${uploadResponse.status} ${errorText}`);
       }
+
+      const newImageData = await uploadResponse.json();
+      const newImage = Array.isArray(newImageData) ? newImageData[0] : newImageData;
+
+      // Step 2: Delete the original image
+      console.log(`Attempting to delete original image with ID: ${image.id}`);
+
+      const deleteResponse = await fetch(`/api/images/${image.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!deleteResponse.ok) {
+        const deleteError = await deleteResponse.text();
+        console.error('Failed to delete original image:', deleteResponse.status, deleteError);
+        console.warn('New image was created but original could not be deleted');
+        // Continue anyway - we have the new image
+      } else {
+        console.log('Successfully deleted original image');
+      }
+
+      // Step 3: Close editor and reload page
+      setShowImageEditor(false);
+      alert('Image updated successfully!');
+
+      // Reload the page to refresh all image data and avoid stale references
+      setTimeout(() => {
+        window.location.reload();
+      }, 500); // Small delay to let the alert show
+
     } catch (error) {
       console.error('Error saving edited image:', error);
-      alert('Failed to save edited image. Please try again.');
+      alert(`Failed to save edited image: ${error.message}`);
     }
   };
 
