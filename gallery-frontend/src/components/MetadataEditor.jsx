@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { X, Save, Plus, Minus } from 'lucide-react';
+import { getImageTags } from '../utils';
 
 function MetadataEditor({ image, onSave, onClose, theme }) {
   const [formData, setFormData] = useState({
     title: image.title || '',
     caption: image.caption || '',
-    tags: image.tags ? [...image.tags] : [],
-    altText: image.altText || ''
+    tags: getImageTags(image),
+    altText: image.altText || image.alt_text || ''
   });
   const [newTag, setNewTag] = useState('');
 
@@ -48,7 +49,7 @@ function MetadataEditor({ image, onSave, onClose, theme }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-60 flex items-center justify-center p-4">
-      <div 
+      <div
         className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
         style={{ backgroundColor: theme.background, color: theme.text }}
       >
@@ -76,7 +77,7 @@ function MetadataEditor({ image, onSave, onClose, theme }) {
               value={formData.title}
               onChange={(e) => handleInputChange('title', e.target.value)}
               className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-opacity-50 transition-colors"
-              style={{ 
+              style={{
                 borderColor: theme.secondary + '40',
                 backgroundColor: theme.background,
                 color: theme.text,
@@ -96,7 +97,7 @@ function MetadataEditor({ image, onSave, onClose, theme }) {
               onChange={(e) => handleInputChange('caption', e.target.value)}
               rows={3}
               className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-opacity-50 transition-colors"
-              style={{ 
+              style={{
                 borderColor: theme.secondary + '40',
                 backgroundColor: theme.background,
                 color: theme.text,
@@ -119,7 +120,7 @@ function MetadataEditor({ image, onSave, onClose, theme }) {
                 onChange={(e) => setNewTag(e.target.value)}
                 onKeyDown={handleKeyPress}
                 className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-opacity-50 transition-colors"
-                style={{ 
+                style={{
                   borderColor: theme.secondary + '40',
                   backgroundColor: theme.background,
                   color: theme.text,
@@ -164,7 +165,7 @@ function MetadataEditor({ image, onSave, onClose, theme }) {
               value={formData.altText}
               onChange={(e) => handleInputChange('altText', e.target.value)}
               className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-opacity-50 transition-colors"
-              style={{ 
+              style={{
                 borderColor: theme.secondary + '40',
                 backgroundColor: theme.background,
                 color: theme.text,

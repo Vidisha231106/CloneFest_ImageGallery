@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Edit, Trash2, Eye } from 'lucide-react';
 import Lightbox from './Lightbox';
+import { getImageTags } from '../utils';
 
 function Gallery({ images, onImageUpdate, onImageDelete, currentUser, theme }) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
@@ -97,7 +98,7 @@ function ImageCard({ image, index, onClick, onQuickDelete, canEdit, theme }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [showActions, setShowActions] = useState(false);
-
+const displayTags = getImageTags(image);
   const handleImageLoad = () => {
     setImageLoaded(true);
   };
@@ -227,27 +228,27 @@ function ImageCard({ image, index, onClick, onQuickDelete, canEdit, theme }) {
           )}
         </div>
         
-        {image.tags && image.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {image.tags.slice(0, 3).map((tag, i) => (
-              <span
-                key={i}
-                className="text-xs px-2 py-1 rounded-full text-white text-opacity-90"
-                style={{ 
-                  backgroundColor: theme.primary,
-                  background: `linear-gradient(45deg, ${theme.primary}, ${theme.accent})`
-                }}
-              >
-                {tag}
-              </span>
-            ))}
-            {image.tags.length > 3 && (
-              <span className="text-xs text-gray-500 px-2 py-1">
-                +{image.tags.length - 3}
-              </span>
-            )}
-          </div>
-        )}
+        {displayTags && displayTags.length > 0 && (
+  <div className="flex flex-wrap gap-1">
+    {displayTags.slice(0, 3).map((tag, i) => (
+      <span
+        key={i}
+        className="text-xs px-2 py-1 rounded-full"
+        style={{ 
+          backgroundColor: theme.primary + '20',
+          color: theme.primary
+        }}
+      >
+        {tag}
+      </span>
+    ))}
+    {displayTags.length > 3 && (
+      <span className="text-xs text-gray-500 px-2 py-1">
+        +{displayTags.length - 3}
+      </span>
+    )}
+  </div>
+)}
       </div>
     </div>
   );

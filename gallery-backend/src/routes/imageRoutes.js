@@ -105,8 +105,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
                 *,
                 users!images_user_id_fkey(id, username, avatar_url),
                 image_tags!left(
-                    tags!inner(id, name, display_name, color,
-                        tag_category:category_id(id, name, color)
+                    tags(id, name, display_name, color)
                     )
                 )
             `)

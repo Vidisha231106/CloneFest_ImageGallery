@@ -2,7 +2,7 @@
 import sharp from 'sharp';
 import ExifReader from 'exifreader';
 import { supabase } from '../supabaseClient.js';
-import { canDeleteImage } from '../middleware/permissionMiddleware.js';
+import { canModifyImage, canDeleteImage } from '../middleware/permissionMiddleware.js';
 
 
 /**
@@ -258,9 +258,7 @@ export async function updateImageMetadata(imageId, updates, user) {
     }
 
     // Check if user can modify this image
-    const canModify = user.role === 'admin' || 
-                     (existingImage.user_id === user.id && 
-                      ['admin', 'editor', 'user'].includes(user.role));
+    const canModify = canModifyImage(user, existingImage);
 
     if (!canModify) {
       throw new Error('Insufficient permissions to modify this image');
@@ -317,9 +315,7 @@ export async function deleteImageFromGallery(imageId, user) {
     }
 
     // Check permissions
-    const canDelete = user.role === 'admin' || 
-                     (image.user_id === user.id && 
-                      ['admin', 'editor', 'user'].includes(user.role));
+const canDelete = canDeleteImage(user, image);
 
     if (!canDelete) {
       throw new Error('Insufficient permissions to delete this image');

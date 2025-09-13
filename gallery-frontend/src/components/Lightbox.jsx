@@ -3,12 +3,14 @@ import { X, ChevronLeft, ChevronRight, Edit3, Trash2, BookImage, Edit } from 'lu
 import MetadataEditor from './MetadataEditor';
 import ImageEditor from './ImageEditor';
 import { fetchAlbums, addImageToAlbum } from '../api';
+import { getImageTags } from '../utils';
 
 function Lightbox({ image, onClose, onNext, onPrev, onUpdate, onDelete, canEdit, theme }) {
   const [showMetadataEditor, setShowMetadataEditor] = useState(false);
   const [showImageEditor, setShowImageEditor] = useState(false);
   const [showAlbumList, setShowAlbumList] = useState(false);
   const [albums, setAlbums] = useState([]);
+
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -64,6 +66,8 @@ function Lightbox({ image, onClose, onNext, onPrev, onUpdate, onDelete, canEdit,
     }
   }, [showAlbumList]);
 
+  const displayTags = getImageTags(image);
+
   const handleBackgroundClick = (e) => {
     if (e.target === e.currentTarget) {
       onClose();
@@ -81,7 +85,6 @@ function Lightbox({ image, onClose, onNext, onPrev, onUpdate, onDelete, canEdit,
     onUpdate(image.id, updates);
     setShowMetadataEditor(false);
   };
-
 
   const handleImageSave = async (editedBlob, editData) => {
     try {
@@ -175,6 +178,7 @@ function Lightbox({ image, onClose, onNext, onPrev, onUpdate, onDelete, canEdit,
       console.error('Failed to add image to album:', error);
       alert('Failed to add image to album.');
     }
+
   };
 
   // Don't render lightbox content if image editor is open
@@ -292,9 +296,9 @@ function Lightbox({ image, onClose, onNext, onPrev, onUpdate, onDelete, canEdit,
             <p className="text-gray-300 mb-3">{image.caption}</p>
           )}
 
-          {image.tags && image.tags.length > 0 && (
+          {displayTags.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {image.tags.map((tag, i) => (
+              {displayTags.map((tag, i) => (
                 <span
                   key={i}
                   className="text-xs bg-blue-600 bg-opacity-80 px-2 py-1 rounded-full"
