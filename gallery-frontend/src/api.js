@@ -5,8 +5,9 @@ import { supabase } from './supabaseClient'; // Adjust path if needed
 // 1. AXIOS INSTANCE SETUP
 // This is the core piece that adds the auth token to every request.
 // ====================================================================
-const apiClient = axios.create();
-
+const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL
+});
 // Use an interceptor to add the Supabase auth token to every request
 apiClient.interceptors.request.use(
   (config) => {

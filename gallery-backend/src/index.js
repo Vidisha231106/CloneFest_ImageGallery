@@ -11,13 +11,13 @@ import albumRoutes from './routes/albumRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import tagRoutes from './routes/tagRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
-
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 // --- Middleware ---
-const frontendURL = process.env.FRONTEND_URL || 'http://localhost:5173';
-app.use(cors({ origin: frontendURL, credentials: true }));
+app.use(cors({
+  origin: 'https://clonefestimagegalleryfrontend-production.up.railway.app' // Your frontend URL
+}));
 app.use(express.json({ limit: '50mb' })); // Increase limit for base64 images
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
