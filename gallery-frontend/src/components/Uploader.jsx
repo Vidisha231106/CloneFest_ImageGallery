@@ -1,10 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { Upload, X, Image as ImageIcon, CheckCircle } from 'lucide-react';
+import { uploadImages } from '../api';
+import { useToast } from '../hooks/useToast';
 
 function ImageUploader({ onImagesUploaded, theme }) {
   const [files, setFiles] = useState([]);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef();
+  const { showSuccess, showError } = useToast();
 
   const handleFiles = (newFiles) => {
     const imageFiles = newFiles.filter(file => file.type.startsWith('image/'));
@@ -45,13 +48,12 @@ function ImageUploader({ onImagesUploaded, theme }) {
     ));
   };
 
-  // --- REPLACED: simulateUpload with realUpload ---
-  const realUpload = (fileData) => {
-    return new Promise((resolve, reject) => {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        return reject(new Error('Authentication token not found.'));
-      }
+  // --- REPLACED: XMLHttpRequest with apiClient ---
+  const realUpload = async (fileData) => {
+    try {
+      setFiles(prev => prev.map(f =>
+        f.id === fileData.id ? { ...f, status: 'uploading', progress: 0 } : f
+      ));
 
       const formData = new FormData();
       formData.append('images', fileData.file);
@@ -64,46 +66,27 @@ function ImageUploader({ onImagesUploaded, theme }) {
         ? fileData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
         : [];
       formData.append('tags', JSON.stringify(tagsArray));
-
       formData.append('privacy', fileData.privacy || 'public');
 
-      // Rest of your XMLHttpRequest code remains the same...
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/images', true);
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      // Show progress during upload
+      setFiles(prev => prev.map(f =>
+        f.id === fileData.id ? { ...f, progress: 50 } : f
+      ));
 
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
-          const progress = Math.round((event.loaded / event.total) * 100);
-          setFiles(prev => prev.map(f =>
-            f.id === fileData.id ? { ...f, progress, status: 'uploading' } : f
-          ));
-        }
-      };
+      const response = await uploadImages(formData);
+      
+      setFiles(prev => prev.map(f =>
+        f.id === fileData.id ? { ...f, status: 'completed', progress: 100 } : f
+      ));
 
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          setFiles(prev => prev.map(f =>
-            f.id === fileData.id ? { ...f, status: 'completed' } : f
-          ));
-          resolve(JSON.parse(xhr.responseText));
-        } else {
-          setFiles(prev => prev.map(f =>
-            f.id === fileData.id ? { ...f, status: 'error' } : f
-          ));
-          reject(new Error(xhr.responseText || 'Upload failed'));
-        }
-      };
-
-      xhr.onerror = () => {
-        setFiles(prev => prev.map(f =>
-          f.id === fileData.id ? { ...f, status: 'error' } : f
-        ));
-        reject(new Error('Network error during upload.'));
-      };
-
-      xhr.send(formData);
-    });
+      return response.data;
+    } catch (error) {
+      setFiles(prev => prev.map(f =>
+        f.id === fileData.id ? { ...f, status: 'error', progress: 0 } : f
+      ));
+      showError('Upload Failed', `Failed to upload ${fileData.title}: ${error.response?.data?.error || error.message}`);
+      throw error;
+    }
   };
 
   const handleUploadAll = async () => {
@@ -123,12 +106,14 @@ function ImageUploader({ onImagesUploaded, theme }) {
       }
       onImagesUploaded(allUploadedImages);
 
+      showSuccess('Upload Complete', `Successfully uploaded ${allUploadedImages.length} image(s).`);
+
       setTimeout(() => {
         setFiles(prev => prev.filter(f => f.status !== 'completed'));
       }, 2000);
     } catch (error) {
       console.error('Upload error:', error);
-      alert(`Upload failed: ${error.message}`);
+      showError('Upload Failed', error.response?.data?.error || 'Failed to upload images. Please try again.');
     }
   };
 

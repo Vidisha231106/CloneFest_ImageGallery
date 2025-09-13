@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import apiClient from '../api'; // Import the configured API client
 import Header from './Header';
 import Gallery from './Gallery';
 import AIImageGenerator from './AIImageGenerator';
@@ -7,12 +8,50 @@ import VectorSearch from './VectorSearch';
 import Uploader from './Uploader';
 import UserAuth from './UserAuth';
 import AlbumManager from './AlbumManager';
+import ConfirmationModal from './ConfirmationModal';
+import ToastContainer from './ToastContainer';
+import { useToast } from '../hooks/useToast';
 
 function App() {
   const [currentView, setCurrentView] = useState('gallery');
   const [user, setUser] = useState(null);
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [imagesLoading, setImagesLoading] = useState(false);
+  
+  // Toast notifications
+  const { toasts, removeToast, showSuccess, showError, showWarning } = useToast();
+  
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+    type: 'danger'
+  });
+
+  // Helper function to show confirmation dialog
+  const showConfirmation = (title, message, onConfirm, type = 'danger') => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      onConfirm,
+      type
+    });
+  };
+
+  // Close confirmation modal
+  const closeConfirmModal = () => {
+    setConfirmModal({
+      isOpen: false,
+      title: '',
+      message: '',
+      onConfirm: null,
+      type: 'danger'
+    });
+  };
 
   // Default theme with improved colors
   const defaultTheme = {
@@ -41,21 +80,15 @@ function App() {
           if (expiryTime && currentTime >= expiryTime - 300) { // 5 minutes before expiry
             if (refreshToken) {
               try {
-                const refreshResponse = await fetch('/api/users/refresh', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ refresh_token: refreshToken })
+                const refreshResponse = await apiClient.post('/api/users/refresh', {
+                  refresh_token: refreshToken
                 });
 
-                if (refreshResponse.ok) {
-                  const refreshData = await refreshResponse.json();
-                  currentToken = refreshData.token;
-                  localStorage.setItem('authToken', refreshData.token);
-                  localStorage.setItem('refreshToken', refreshData.session.refresh_token);
-                  localStorage.setItem('tokenExpiry', refreshData.session.expires_at);
-                } else {
-                  throw new Error('Token refresh failed');
-                }
+                const refreshData = refreshResponse.data;
+                currentToken = refreshData.token;
+                localStorage.setItem('authToken', refreshData.token);
+                localStorage.setItem('refreshToken', refreshData.session.refresh_token);
+                localStorage.setItem('tokenExpiry', refreshData.session.expires_at);
               } catch (refreshError) {
                 console.error('Token refresh failed:', refreshError);
                 localStorage.removeItem('authToken');
@@ -68,19 +101,8 @@ function App() {
             }
           }
 
-          const response = await fetch('/api/users/me', {
-            headers: { 'Authorization': `Bearer ${currentToken}` }
-          });
-
-          if (response.ok) {
-            const userData = await response.json();
-            setUser(userData);
-          } else {
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('refreshToken');
-            localStorage.removeItem('tokenExpiry');
-            setUser(null);
-          }
+          const response = await apiClient.get('/api/users/me');
+          setUser(response.data);
         } catch (error) {
           console.error('Failed to fetch user profile:', error);
           localStorage.removeItem('authToken');
@@ -97,21 +119,55 @@ function App() {
   useEffect(() => {
     const fetchImages = async () => {
       if (user) {
-        const token = localStorage.getItem('authToken');
+        setImagesLoading(true);
         try {
-          const response = await fetch('/api/images', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (response.ok) {
-            const data = await response.json();
-            setImages(data.images || []);
-          }
+          const response = await apiClient.get('/api/images?limit=50');
+          setImages(response.data.images || []);
         } catch (error) {
           console.error("Failed to fetch images:", error);
+          showError('Load Failed', 'Failed to load images. Please refresh the page.');
+        } finally {
+          setImagesLoading(false);
         }
       }
     };
     fetchImages();
+
+    // Set up realtime subscription for images
+    let subscription = null;
+    if (user) {
+      subscription = supabase
+        .channel('images_channel')
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'images',
+            filter: `user_id=eq.${user.id}`
+          }, 
+          (payload) => {
+            if (payload.eventType === 'INSERT') {
+              // Add new image to the beginning
+              setImages(prev => [payload.new, ...prev]);
+            } else if (payload.eventType === 'DELETE') {
+              // Remove deleted image
+              setImages(prev => prev.filter(img => img.id !== payload.old.id));
+            } else if (payload.eventType === 'UPDATE') {
+              // Update existing image
+              setImages(prev => prev.map(img => 
+                img.id === payload.new.id ? { ...img, ...payload.new } : img
+              ));
+            }
+          }
+        )
+        .subscribe();
+    }
+
+    return () => {
+      if (subscription) {
+        supabase.removeChannel(subscription);
+      }
+    };
   }, [user]);
 
   useEffect(() => {
@@ -156,30 +212,41 @@ function App() {
 
   // Image delete function
   const handleImageDelete = async (imageId) => {
-    if (!window.confirm('Are you sure you want to delete this image?')) {
-      return;
-    }
-
-    const token = localStorage.getItem('authToken');
-    try {
-      const response = await fetch(`/api/images/${imageId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
+    const actualDelete = async () => {
+      try {
+        // Optimistic update - remove immediately from UI
+        const originalImages = images;
+        setImages((prevImages) => prevImages.filter(img => img.id !== imageId));
+        
+        await apiClient.delete(`/api/images/${imageId}`);
+        showSuccess('Image Deleted', 'The image has been successfully deleted.');
+      } catch (error) {
+        console.error('Delete error:', error);
+        
+        // Revert optimistic update on error
+        setImages(originalImages);
+        
+        let errorMessage = 'Failed to delete the image. Please try again.';
+        
+        if (error.response?.status === 403) {
+          errorMessage = 'You do not have permission to delete this image. You can only delete images that you uploaded.';
+        } else if (error.response?.status === 404) {
+          errorMessage = 'Image not found. It may have already been deleted.';
+        } else if (error.response?.data?.error) {
+          errorMessage = error.response.data.error;
         }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete image.');
+        
+        showError('Delete Failed', errorMessage);
       }
+    };
 
-      // Remove image from local state
-      setImages((prevImages) => prevImages.filter(img => img.id !== imageId));
-    } catch (error) {
-      console.error('Delete error:', error);
-      alert(error.message);
-    }
+    // Show confirmation dialog
+    showConfirmation(
+      'Delete Image',
+      'Are you sure you want to delete this image? This action cannot be undone.',
+      actualDelete,
+      'danger'
+    );
   };
 
   // Image update function with support for edited image uploads
@@ -212,27 +279,15 @@ function App() {
         updatedData.editedUrl = publicURL;
       }
 
-      const response = await fetch(`/api/images/${imageId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(updatedData)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update image.');
-      }
-
-      const updatedImage = await response.json();
+      const response = await apiClient.put(`/api/images/${imageId}`, updatedData);
+      const updatedImage = response.data;
 
       // Update local state
       setImages((prev) => prev.map(img => (img.id === imageId ? updatedImage : img)));
+      showSuccess('Image Updated', 'The image has been successfully updated.');
     } catch (error) {
       console.error('Update error:', error);
-      alert(error.message);
+      showError('Update Failed', error.response?.data?.error || 'Failed to update the image. Please try again.');
     }
   };
 
@@ -291,7 +346,14 @@ function App() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 pt-16">
         {currentView === 'gallery' && (
-          <Gallery images={images} theme={theme} currentUser={user} onImageUpdate={handleImageUpdate} onImageDelete={handleImageDelete} />
+          <Gallery 
+            images={images} 
+            theme={theme} 
+            currentUser={user} 
+            onImageUpdate={handleImageUpdate} 
+            onImageDelete={handleImageDelete}
+            loading={imagesLoading}
+          />
         )}
         {currentView === 'uploader' && <Uploader onImagesUploaded={handleImagesUploaded} theme={theme} />}
         {currentView === 'albums' && <AlbumManager theme={theme} />}
@@ -333,6 +395,20 @@ function App() {
           </div>
         )}
       </main>
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={closeConfirmModal}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        theme={theme}
+      />
     </div>
   );
 }

@@ -40,8 +40,7 @@ function VectorSearch({ images, theme = {} }) {
       
       setSearchResults(results);
     } catch (error) {
-      console.error('Search failed:', error);
-    } finally {
+      } finally {
       setLoading(false);
     }
   };
@@ -60,8 +59,7 @@ function VectorSearch({ images, theme = {} }) {
       const results = shuffled.slice(0, 4);
       setSearchResults(results);
     } catch (error) {
-      console.error('Image search failed:', error);
-    } finally {
+      } finally {
       setLoading(false);
     }
   };

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Edit3, Trash2, BookImage, Edit } from 'lucide-react';
 import MetadataEditor from './MetadataEditor';
 import ImageEditor from './ImageEditor';
-import { fetchAlbums, addImageToAlbum } from '../api';
+import apiClient, { fetchAlbums, addImageToAlbum } from '../api';
 import { getImageTags } from '../utils';
 
 function Lightbox({ image, onClose, onNext, onPrev, onUpdate, onDelete, canEdit, theme }) {
@@ -75,10 +75,8 @@ function Lightbox({ image, onClose, onNext, onPrev, onUpdate, onDelete, canEdit,
   };
 
   const handleDelete = () => {
-    if (window.confirm('Are you sure you want to delete this image?')) {
-      onDelete(image.id);
-      onClose();
-    }
+    onDelete(image.id);
+    onClose();
   };
 
   const handleMetadataUpdate = (updates) => {
@@ -116,42 +114,26 @@ function Lightbox({ image, onClose, onNext, onPrev, onUpdate, onDelete, canEdit,
       if (image.license) formData.append('license', image.license);
       if (image.attribution) formData.append('attribution', image.attribution);
 
-      console.log('Uploading edited image to replace existing...');
-
       // Upload new version
-      const uploadResponse = await fetch('/api/images', {
-        method: 'POST',
+      const uploadResponse = await apiClient.post('/api/images', formData, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      if (!uploadResponse.ok) {
-        const errorText = await uploadResponse.text();
-        throw new Error(`Upload failed: ${uploadResponse.status} ${errorText}`);
-      }
-
-      const newImageData = await uploadResponse.json();
-      const newImage = Array.isArray(newImageData) ? newImageData[0] : newImageData;
-
-      // Step 2: Delete the original image
-      console.log(`Attempting to delete original image with ID: ${image.id}`);
-
-      const deleteResponse = await fetch(`/api/images/${image.id}`, {
-        method: 'DELETE',
-        headers: {
+          'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`
         }
       });
 
-      if (!deleteResponse.ok) {
-        const deleteError = await deleteResponse.text();
-        console.error('Failed to delete original image:', deleteResponse.status, deleteError);
-        console.warn('New image was created but original could not be deleted');
+      if (uploadResponse.status < 200 || uploadResponse.status >= 300) {
+        throw new Error(`Upload failed: ${uploadResponse.status}`);
+      }
+
+      const newImageData = uploadResponse.data;
+      const newImage = Array.isArray(newImageData) ? newImageData[0] : newImageData;
+
+      // Step 2: Delete the original image
+      const deleteResponse = await apiClient.delete(`/api/images/${image.id}`);
+
+      if (deleteResponse.status < 200 || deleteResponse.status >= 300) {
         // Continue anyway - we have the new image
-      } else {
-        console.log('Successfully deleted original image');
       }
 
       // Step 3: Close editor and reload page

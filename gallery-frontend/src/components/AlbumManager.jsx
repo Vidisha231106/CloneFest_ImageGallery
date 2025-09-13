@@ -1,6 +1,7 @@
 // src/components/AlbumManager.jsx
 import React, { useState, useEffect } from 'react';
 import { fetchAlbums, createAlbum, fetchAlbumDetails, addImageToAlbum, removeImageFromAlbum, fetchImages } from '../api';
+import { supabase } from '../supabaseClient';
 import { BookImage, Plus, X, ImagePlus, Trash2, Check, Square, Image as ImageIcon } from 'lucide-react';
 
 function AlbumManager({ theme }) {
@@ -40,7 +41,42 @@ function AlbumManager({ theme }) {
       }
     };
     loadAlbums();
-  }, []);
+
+    // Set up realtime subscription for albums
+    const subscription = supabase
+      .channel('albums_channel')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'albums'
+        }, 
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setAlbums(prev => [payload.new, ...prev]);
+          } else if (payload.eventType === 'DELETE') {
+            setAlbums(prev => prev.filter(album => album.id !== payload.old.id));
+            // Close album if it was deleted
+            if (selectedAlbum?.id === payload.old.id) {
+              setSelectedAlbum(null);
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            setAlbums(prev => prev.map(album => 
+              album.id === payload.new.id ? { ...album, ...payload.new } : album
+            ));
+            // Update selected album if it was updated
+            if (selectedAlbum?.id === payload.new.id) {
+              setSelectedAlbum(prev => ({ ...prev, ...payload.new }));
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, [selectedAlbum?.id]);
 
   const handleCreateAlbum = async (e) => {
     e.preventDefault();

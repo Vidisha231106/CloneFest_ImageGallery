@@ -5,9 +5,13 @@ import { supabase } from './supabaseClient'; // Adjust path if needed
 // 1. AXIOS INSTANCE SETUP
 // This is the core piece that adds the auth token to every request.
 // ====================================================================
-// Add this right before the apiClient creation:
+
+// Configure baseURL based on environment
+const baseURL = import.meta.env.VITE_API_BASE_URL || '';
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL
+  baseURL: baseURL, // Empty string uses relative URLs with Vite proxy
+  timeout: 30000, // 30 second timeout
 });
 
 // Use an interceptor to add the Supabase auth token to every request
@@ -17,9 +21,33 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    console.error('Request interceptor error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for better error handling
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (import.meta.env.DEV) {
+      console.error('API Error:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          baseURL: error.config?.baseURL
+        }
+      });
+    }
+    return Promise.reject(error);
+  }
 );
 
 export default apiClient; // Exporting this can also be useful

@@ -15,15 +15,55 @@ import dotenv from 'dotenv';
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
-app.use(cors({
-  origin: 'https://clonefestimagegalleryfrontend-production.up.railway.app',
-  credentials: true
-}));
+
 // --- Middleware ---
 const frontendURL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
+// CORS configuration - allow both development and production URLs
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173', // Vite default port
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173',
+  frontendURL,
+  'https://clone-fest-image-gallery-frontend.vercel.app' // Your deployed frontend
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl requests, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('Blocked by CORS:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
+
 app.use(express.json({ limit: '50mb' })); // Increase limit for base64 images
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Request logging middleware for debugging
+if (process.env.NODE_ENV === 'development') {
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`, {
+      headers: {
+        'content-type': req.headers['content-type'],
+        'authorization': req.headers.authorization ? 'Bearer ***' : 'None',
+        'origin': req.headers.origin
+      },
+      query: req.query,
+      body: req.method === 'POST' || req.method === 'PUT' ? 
+        (req.headers['content-type']?.includes('multipart') ? '[File Upload]' : req.body) : 
+        undefined
+    });
+    next();
+  });
+}
 
 // --- Security Headers ---
 app.use((req, res, next) => {
@@ -109,3 +149,6 @@ app.listen(PORT, () => {
     console.log(`   GET  /api/albums - List albums`);
     console.log(`   POST /api/generate - AI image generation`);
 });
+
+// Export the app for Vercel
+export default app;

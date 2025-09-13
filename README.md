@@ -10,7 +10,9 @@ ImageGallery is a modern, full-stack application for uploading, managing, and sh
 - **Dynamic Image Gallery**: A responsive grid layout that displays all user-accessible images
 - **Full-Screen Lightbox Viewer**: A beautiful, immersive viewer for individual images with easy navigation
 - **Image Management**: Securely edit or delete your own uploaded images
-- **AI Image Generation**: Generate images from text prompts using Replicate AI
+- **AI Image Generation**: Generate images from text prompts using Hugging Face's Stable Diffusion XL
+- **Performance Optimized**: Fast loading with thumbnail support, skeleton loading states, and optimistic UI updates
+- **Real-time Collaboration**: Live updates using Supabase realtime subscriptions for seamless multi-user experience
 - **Theming Engine**: A floating color palette editor to customize the application's entire look and feel in real-time
 - **Role-Based Permissions**: A backend system to support different user roles (user, editor, admin)
 - **Album Management**: A dedicated view for creating and organizing images into albums
@@ -31,7 +33,8 @@ This project uses a decoupled, full-stack architecture. The React frontend is a 
 | | Image Processing: sharp |
 | | File Uploads: multer |
 | | Metadata Extraction: exifreader |
-| | AI Image Generation: Replicate |
+| | AI Image Generation: Hugging Face API |
+| | Real-time Updates: Supabase Realtime |
 
 ### Architecture Overview
 
@@ -71,6 +74,17 @@ The application uses a PostgreSQL database hosted on Supabase with the following
 
 The schema supports advanced features like privacy controls, EXIF metadata storage, AI generation tracking, and comprehensive tagging systems.
 
+## 🚀 Performance Features
+
+This application is optimized for speed and user experience:
+
+- **Thumbnail Optimization**: Images load thumbnails in gallery view and full resolution only when needed
+- **Skeleton Loading**: Smooth loading states prevent layout shifts and provide immediate feedback
+- **Optimistic UI Updates**: Instant feedback for user actions like deletions before server confirmation
+- **Centralized API Client**: Consistent error handling and authentication across all API calls
+- **Real-time Synchronization**: Live updates when images are added, modified, or deleted by any user
+- **Efficient Queries**: Optimized database queries with pagination and selective field loading
+
 ## 🚀 Getting Started
 
 To get a local copy up and running, follow these simple steps.
@@ -80,7 +94,7 @@ To get a local copy up and running, follow these simple steps.
 - Node.js (v18 or later)
 - npm
 - A free [Supabase](https://supabase.com) account
-- A [Replicate](https://replicate.com) account for AI image generation
+- A free [Hugging Face](https://huggingface.co) account for AI image generation
 
 ### Installation
 
@@ -112,7 +126,7 @@ To get a local copy up and running, follow these simple steps.
    ```env
    SUPABASE_URL=https://your-project-id.supabase.co
    SUPABASE_SERVICE_KEY=your_secret_service_role_key_here
-   REPLICATE_API_TOKEN=your_replicate_api_token_here
+   HUGGINGFACE_API_TOKEN=your_huggingface_api_token_here
    ```
 
    ```bash
@@ -150,6 +164,17 @@ To get a local copy up and running, follow these simple steps.
    ```
 
    Your React application will be available at `http://localhost:5173`.
+
+## 🌐 Deployment
+
+This application is designed for easy deployment on modern platforms:
+
+- **Frontend**: Optimized for Vercel, Netlify, or similar static hosting services
+- **Backend**: Compatible with Railway, Render, or any Node.js hosting platform
+- **Database**: Uses Supabase's cloud PostgreSQL with built-in scaling
+- **Environment Configuration**: Separate environment variables for development and production
+
+The frontend uses centralized API configuration that automatically adapts to different deployment environments.
 
 ## 👥 Contributors
 

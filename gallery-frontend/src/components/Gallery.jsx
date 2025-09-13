@@ -3,7 +3,7 @@ import { Edit, Trash2, Eye } from 'lucide-react';
 import Lightbox from './Lightbox';
 import { getImageTags } from '../utils';
 
-function Gallery({ images, onImageUpdate, onImageDelete, currentUser, theme }) {
+function Gallery({ images, onImageUpdate, onImageDelete, currentUser, theme, loading }) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
 
   const handleImageClick = (index) => {
@@ -29,12 +29,10 @@ function Gallery({ images, onImageUpdate, onImageDelete, currentUser, theme }) {
   const handleQuickDelete = async (e, imageId) => {
     e.stopPropagation(); // Prevent opening lightbox
     
-    if (window.confirm('Are you sure you want to delete this image?')) {
-      try {
-        await onImageDelete(imageId);
-      } catch (error) {
-        console.error('Failed to delete image:', error);
-      }
+    try {
+      await onImageDelete(imageId);
+    } catch (error) {
+      console.error('Failed to delete image:', error);
     }
   };
 
@@ -60,23 +58,32 @@ function Gallery({ images, onImageUpdate, onImageDelete, currentUser, theme }) {
           Image Gallery
         </h2>
         <p className="text-gray-600">
-          {images.length} images in your collection
+          {loading ? 'Loading...' : `${images.length} images in your collection`}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-        {images.map((image, index) => (
-          <ImageCard
-            key={image.id}
-            image={image}
-            index={index}
-            onClick={() => handleImageClick(index)}
-            onQuickDelete={(e) => handleQuickDelete(e, image.id)}
-            canEdit={!!currentUser}
-            theme={theme}
-          />
-        ))}
-      </div>
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          {/* Skeleton loading */}
+          {Array(10).fill(0).map((_, i) => (
+            <div key={i} className="bg-gray-200 rounded-xl aspect-square animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          {images.map((image, index) => (
+            <ImageCard
+              key={image.id}
+              image={image}
+              index={index}
+              onClick={() => handleImageClick(index)}
+              onQuickDelete={(e) => handleQuickDelete(e, image.id)}
+              canEdit={!!currentUser && (currentUser.id === image.user_id || currentUser.role === 'admin')}
+              theme={theme}
+            />
+          ))}
+        </div>
+      )}
 
       {selectedImageIndex !== null && (
         <Lightbox
@@ -86,7 +93,7 @@ function Gallery({ images, onImageUpdate, onImageDelete, currentUser, theme }) {
           onPrev={handlePrevImage}
           onUpdate={onImageUpdate}
           onDelete={onImageDelete}
-          canEdit={!!currentUser}
+          canEdit={!!currentUser && (currentUser.id === images[selectedImageIndex]?.user_id || currentUser.role === 'admin')}
           theme={theme}
         />
       )}
@@ -98,7 +105,8 @@ function ImageCard({ image, index, onClick, onQuickDelete, canEdit, theme }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [showActions, setShowActions] = useState(false);
-const displayTags = getImageTags(image);
+  const displayTags = getImageTags(image);
+  
   const handleImageLoad = () => {
     setImageLoaded(true);
   };
@@ -178,7 +186,7 @@ const displayTags = getImageTags(image);
           </div>
         ) : (
           <img
-            src={image.url}
+            src={image.thumbnail_url || image.url}
             alt={image.altText || image.title}
             className={`w-full h-full object-cover group-hover:scale-110 transition-all duration-700 ${
               imageLoaded ? 'opacity-100' : 'opacity-0'
