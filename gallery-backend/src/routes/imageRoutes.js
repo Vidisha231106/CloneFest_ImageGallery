@@ -202,7 +202,7 @@ async function createImageTags(imageId, tagNames, userId) {
         // Get or create tags
         const tagPromises = tagNames.map(async (tagName) => {
             const normalizedName = tagName.toLowerCase().trim();
-            
+
             if (!normalizedName) return null; // Skip empty tags
 
             // Try to find existing tag
@@ -436,18 +436,18 @@ router.delete('/:id/tags/:tagId', authMiddleware, async (req, res) => {
 
         // Update tag usage count
         const { data: tag } = await supabase
-    .from('tags')
-    .select('usage_count')
-    .eq('id', tagId)
-    .single();
+            .from('tags')
+            .select('usage_count')
+            .eq('id', tagId)
+            .single();
 
-if (tag) {
-    const newCount = Math.max((tag.usage_count || 0) - 1, 0);
-    await supabase
-        .from('tags')
-        .update({ usage_count: newCount })
-        .eq('id', tagId);
-}
+        if (tag) {
+            const newCount = Math.max((tag.usage_count || 0) - 1, 0);
+            await supabase
+                .from('tags')
+                .update({ usage_count: newCount })
+                .eq('id', tagId);
+        }
 
         res.status(204).send();
     } catch (error) {
