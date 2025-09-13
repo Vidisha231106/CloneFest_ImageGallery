@@ -22,10 +22,6 @@ function AIImageGenerator({ onImagesGenerated, theme = {} }) {
 
   const samplePrompts = [
     "A serene mountain landscape at sunset",
-    "Abstract geometric patterns in vibrant colors",
-    "A cozy coffee shop in autumn",
-    "Futuristic city skyline at night",
-    "Peaceful zen garden with flowing water"
   ];
 
   const generateImages = async () => {

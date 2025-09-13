@@ -306,7 +306,6 @@ function App() {
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold" style={{ color: theme.text }}>{user.username || 'User'}</h2>
-                    <p style={{ color: theme.secondary }}>{user.email || 'user@example.com'}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">

@@ -9,7 +9,7 @@ function Header({ currentView, onPageChange, user, onLogout, theme, onThemeChang
     { id: 'gallery', label: 'Gallery', icon: Image },
     { id: 'uploader', label: 'Upload', icon: Upload },
     { id: 'albums', label: 'Albums', icon: BookImage },
-    { id: 'profile', label: 'Profile', icon: User },
+    { id: 'profile', label: 'Profile and AI Image Generator', icon: User },
   ];
 
   return (
