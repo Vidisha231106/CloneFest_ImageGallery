@@ -2,6 +2,8 @@
 import sharp from 'sharp';
 import ExifReader from 'exifreader';
 import { supabase } from '../supabaseClient.js';
+import { canDeleteImage } from '../middleware/permissionMiddleware.js';
+
 
 /**
  * Extract EXIF/IPTC metadata from image buffer
@@ -258,7 +260,7 @@ export async function updateImageMetadata(imageId, updates, user) {
     // Check if user can modify this image
     const canModify = user.role === 'admin' || 
                      (existingImage.user_id === user.id && 
-                      ['admin', 'editor'].includes(user.role));
+                      ['admin', 'editor', 'user'].includes(user.role));
 
     if (!canModify) {
       throw new Error('Insufficient permissions to modify this image');
@@ -317,7 +319,7 @@ export async function deleteImageFromGallery(imageId, user) {
     // Check permissions
     const canDelete = user.role === 'admin' || 
                      (image.user_id === user.id && 
-                      ['admin', 'editor'].includes(user.role));
+                      ['admin', 'editor', 'user'].includes(user.role));
 
     if (!canDelete) {
       throw new Error('Insufficient permissions to delete this image');

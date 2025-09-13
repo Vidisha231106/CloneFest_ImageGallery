@@ -17,6 +17,7 @@ const rolePermissions = {
         'create_albums',
         'edit_own_albums',
         'view_unlisted_images',
+        'delete_own_images',
         'create_tags'
     ],
     editor: [
@@ -26,6 +27,7 @@ const rolePermissions = {
         'edit_own_albums',
         'view_unlisted_images',
         'moderate_own_comments',
+        'delete_own_images',
         'create_tags'
     ],
     user: [ // Changed from 'visitor' to 'user' to match your schema
@@ -35,6 +37,7 @@ const rolePermissions = {
         'upload_images',
         'edit_own_images',
         'create_albums',
+        'delete_own_images',
         'edit_own_albums'
     ]
 };
@@ -55,9 +58,9 @@ export const checkPermission = (requiredPermission) => {
         }
 
         if (!hasPermission(req.user.role, requiredPermission)) {
-            return res.status(403).json({ 
+            return res.status(403).json({
                 error: 'Insufficient permissions.',
-                required: requiredPermission 
+                required: requiredPermission
             });
         }
 
@@ -103,34 +106,33 @@ export const canAccessImage = (user, image) => {
 // Check if user can modify specific image
 export const canModifyImage = (user, image) => {
     if (!user) return false;
-    
+
     // Admins can modify any image
     if (hasPermission(user.role, 'manage_all_images')) {
         return true;
     }
-    
+
     // Users can modify their own images if they have permission
     if (image.user_id === user.id && hasPermission(user.role, 'edit_own_images')) {
         return true;
     }
-    
+
     return false;
 };
 
 // Check if user can delete specific image
 export const canDeleteImage = (user, image) => {
     if (!user) return false;
-    
+
     // Admins can delete any image
     if (hasPermission(user.role, 'delete_any_image')) {
         return true;
     }
-    
-    // Users can delete their own images if they have edit permission
-    if (image.user_id === user.id && hasPermission(user.role, 'edit_own_images')) {
-        return true;
-    }
-    
+
+    if (image.user_id === user.id && hasPermission(user.role, 'delete_own_images')) {
+    return true;
+}
+
     return false;
 };
 
