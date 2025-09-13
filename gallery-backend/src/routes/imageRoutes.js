@@ -4,10 +4,10 @@ import multer from 'multer';
 import { supabase } from '../supabaseClient.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 import { checkPermission, canAccessImage, canModifyImage, canDeleteImage } from '../middleware/permissionMiddleware.js';
-import { 
-    saveImageToGallery, 
-    updateImageMetadata, 
-    deleteImageFromGallery 
+import {
+    saveImageToGallery,
+    updateImageMetadata,
+    deleteImageFromGallery
 } from '../services/imageService.js';
 
 const router = express.Router();
@@ -26,10 +26,10 @@ const optionalAuth = (req, res, next) => {
 
 // GET /api/images - Get all images with privacy filtering
 router.get('/', optionalAuth, async (req, res) => {
-    const { 
-        privacy, 
-        user_id, 
-        page = 1, 
+    const {
+        privacy,
+        user_id,
+        page = 1,
         limit = 20,
         sort_by = 'created_at',
         sort_order = 'desc'
@@ -42,7 +42,7 @@ router.get('/', optionalAuth, async (req, res) => {
 
         let query = supabase
             .from('images')
-.select(`
+            .select(`
     *,
     users!images_user_id_fkey(id, username, avatar_url),
     image_tags!left(
@@ -52,14 +52,14 @@ router.get('/', optionalAuth, async (req, res) => {
 
         // Apply privacy filtering
         // Apply privacy filtering
-if (req.user) {
-    // If a user is logged in, strictly filter by their user ID.
-    // This ensures they see ONLY their own images by default.
-    query = query.eq('user_id', req.user.id);
-} else {
-    // If no user is logged in, show only public images.
-    query = query.eq('privacy', 'public');
-}
+        if (req.user) {
+            // If a user is logged in, strictly filter by their user ID.
+            // This ensures they see ONLY their own images by default.
+            query = query.or(`user_id.eq.${req.user.id},and(privacy.eq.public,user_id.neq.${req.user.id})`);
+        } else {
+            // If no user is logged in, show only public images.
+            query = query.eq('privacy', 'public');
+        }
 
         // Filter by user
         if (user_id) {
@@ -70,7 +70,7 @@ if (req.user) {
         const validSortFields = ['created_at', 'updated_at', 'title', 'views'];
         const sortField = validSortFields.includes(sort_by) ? sort_by : 'created_at';
         const sortDirection = sort_order === 'asc';
-        
+
         query = query
             .order(sortField, { ascending: sortDirection })
             .range(offset, offset + limitNum - 1);
@@ -128,7 +128,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
                 .from('images')
                 .update({ views: (image.views || 0) + 1 })
                 .eq('id', id);
-            
+
             image.views = (image.views || 0) + 1;
         }
 
@@ -143,11 +143,14 @@ router.get('/:id', optionalAuth, async (req, res) => {
 router.post('/', authMiddleware, checkPermission('upload_images'), upload.array('images'), async (req, res) => {
     const files = req.files;
     const userId = req.user.id;
-    const { 
-        privacy = 'public', 
+    const {
+        title,
+        caption,
+        altText,
+        tags, // This will be a JSON string
+        privacy, // This will be 'public', 'private', or 'unlisted'
         license,
-        attribution,
-        tags // Comma-separated tag names
+        attribution
     } = req.body;
 
     if (!files || !files.length) {
@@ -162,13 +165,17 @@ router.post('/', authMiddleware, checkPermission('upload_images'), upload.array(
 
     try {
         const uploadPromises = files.map(async (file) => {
+            const parsedTags = tags ? JSON.parse(tags) : [];
+
             const metadata = {
-                title: file.originalname.replace(/\.[^/.]+$/, ''),
+                title: title || file.originalname.replace(/\.[^/.]+$/, ''),
+                caption: caption || '',
+                altText: altText || '',
                 userId: userId,
-                privacy: privacy,
+                privacy: privacy || 'private', // Use the value from the form
                 license: license,
                 attribution: attribution,
-                tags: tags ? tags.split(',').map(tag => tag.trim()) : []
+                tags: parsedTags // Use the parsed tags
             };
 
             const uploadedImage = await saveImageToGallery(file.buffer, metadata);
@@ -194,8 +201,10 @@ async function createImageTags(imageId, tagNames, userId) {
     try {
         // Get or create tags
         const tagPromises = tagNames.map(async (tagName) => {
-            const normalizedName = tagName.toLowerCase();
+            const normalizedName = tagName.toLowerCase().trim();
             
+            if (!normalizedName) return null; // Skip empty tags
+
             // Try to find existing tag
             let { data: existingTag } = await supabase
                 .from('tags')
@@ -211,12 +220,12 @@ async function createImageTags(imageId, tagNames, userId) {
                         name: normalizedName,
                         display_name: tagName,
                         created_by: userId,
-                        usage_count: 0
+                        usage_count: 1 // Start with 1 since we're using it now
                     })
                     .select('id')
                     .single();
 
-                if (!error) {
+                if (!error && newTag) {
                     existingTag = newTag;
                 }
             }
@@ -233,18 +242,20 @@ async function createImageTags(imageId, tagNames, userId) {
                 tag_id: tagId
             }));
 
-            await supabase
+            const { error } = await supabase
                 .from('image_tags')
                 .insert(imageTagData);
 
-            // Update tag usage counts
-            await supabase
-                .from('tags')
-                .update({ usage_count: supabase.sql`usage_count + 1` })
-                .in('id', tagIds);
+            if (error) {
+                console.error('Failed to create image-tag associations:', error);
+                throw error;
+            }
+
+            console.log(`Successfully created ${tagIds.length} tag associations for image ${imageId}`);
         }
     } catch (error) {
         console.error('Failed to create image tags:', error);
+        throw error; // Re-throw to handle in calling function
     }
 }
 
@@ -304,7 +315,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
         // Handle tag updates if provided
         if (tags !== undefined) {
             await updateImageTags(id, tags, req.user.id);
-            
+
             // Refetch image with updated tags
             const { data: updatedImage } = await supabase
                 .from('images')
@@ -424,10 +435,19 @@ router.delete('/:id/tags/:tagId', authMiddleware, async (req, res) => {
         if (error) throw error;
 
         // Update tag usage count
-        await supabase
-            .from('tags')
-            .update({ usage_count: supabase.sql`GREATEST(usage_count - 1, 0)` })
-            .eq('id', tagId);
+        const { data: tag } = await supabase
+    .from('tags')
+    .select('usage_count')
+    .eq('id', tagId)
+    .single();
+
+if (tag) {
+    const newCount = Math.max((tag.usage_count || 0) - 1, 0);
+    await supabase
+        .from('tags')
+        .update({ usage_count: newCount })
+        .eq('id', tagId);
+}
 
         res.status(204).send();
     } catch (error) {
