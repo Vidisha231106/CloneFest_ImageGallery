@@ -6,7 +6,7 @@ import { supabase } from './supabaseClient'; // Adjust path if needed
 // This is the core piece that adds the auth token to every request.
 // ====================================================================
 const apiClient = axios.create({
-  baseURL: 'https://clonefestimagegallerybackend-production.up.railway.app'
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://clonefestimagegallerybackend-production.up.railway.app'
 });
 // Use an interceptor to add the Supabase auth token to every request
 apiClient.interceptors.request.use(
