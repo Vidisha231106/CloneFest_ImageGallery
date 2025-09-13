@@ -16,7 +16,8 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 app.use(cors({
-  origin: 'https://clonefestimagegalleryfrontend-production.up.railway.app'
+  origin: 'https://clonefestimagegalleryfrontend-production.up.railway.app',
+  credentials: true
 }));
 // --- Middleware ---
 const frontendURL = process.env.FRONTEND_URL || 'http://localhost:3000';
