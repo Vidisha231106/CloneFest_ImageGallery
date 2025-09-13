@@ -52,11 +52,12 @@ function AuthPage({ onLogin, theme }) { // CHANGED: onLogin will now handle the 
         : { email: formData.email, password: formData.password, username: formData.username };
 
       // --- CHANGED: Switched to fetch from backend API ---
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+const baseURL = import.meta.env.VITE_API_BASE_URL;
+const response = await fetch(`${baseURL}${endpoint}`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(payload)
+});
       
       const data = await response.json();
 
