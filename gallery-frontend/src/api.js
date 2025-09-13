@@ -5,9 +5,21 @@ import { supabase } from './supabaseClient'; // Adjust path if needed
 // 1. AXIOS INSTANCE SETUP
 // This is the core piece that adds the auth token to every request.
 // ====================================================================
-const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://clonefestimagegallerybackend-production.up.railway.app/'
+// Add this right before the apiClient creation:
+console.log('🔍 Environment Debug:', {
+  VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+  VITE_API_URL: import.meta.env.VITE_API_URL,
+  NODE_ENV: import.meta.env.NODE_ENV,
+  MODE: import.meta.env.MODE
 });
+
+const finalURL = import.meta.env.VITE_API_BASE_URL || 'https://clonefestimagegallerybackend-production.up.railway.app';
+console.log('🎯 Final API URL being used:', finalURL);
+
+const apiClient = axios.create({
+  baseURL: finalURL
+});
+
 // Use an interceptor to add the Supabase auth token to every request
 apiClient.interceptors.request.use(
   (config) => {
