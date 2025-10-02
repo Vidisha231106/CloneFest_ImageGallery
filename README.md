@@ -185,3 +185,5 @@ ImageGallery was developed as a team effort by the following contributors:
 | Samanvitha L | [Samanvitha97](https://github.com/Samanvitha97) |
 | Tanisha R | [Tanisha-27-12](https://github.com/Tanisha-27-12)|
 | Vidisha Dewan | [Vidisha231106](https://github.com/Vidisha231106) |
+
+Special thanks to nerdylua Nihaal SP for insightful contributions and for helping us significantly improve the codebase!
